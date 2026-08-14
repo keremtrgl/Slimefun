@@ -39,7 +39,13 @@ import io.github.bakedlibs.dough.blocks.BlockPosition;
 import io.github.bakedlibs.dough.common.CommonPatterns;
 import io.github.thebusybiscuit.slimefun4.api.items.SlimefunItem;
 import io.github.thebusybiscuit.slimefun4.implementation.Slimefun;
+import io.github.thebusybiscuit.slimefun4.utils.FastBlockPos;
 import io.github.thebusybiscuit.slimefun4.utils.NumberUtils;
+
+import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectMaps;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.longs.LongIterator;
 
 import me.mrCookieSlime.CSCoreLibPlugin.Configuration.Config;
 import me.mrCookieSlime.Slimefun.api.inventory.BlockMenu;
@@ -56,8 +62,8 @@ public class BlockStorage {
     private static final EmptyBlockData emptyBlockData = new EmptyBlockData();
 
     private final World world;
-    private final Map<Location, Config> storage = new ConcurrentHashMap<>();
-    private final Map<Location, BlockMenu> inventories = new ConcurrentHashMap<>();
+    private final Long2ObjectMap<Config> storage = Long2ObjectMaps.synchronize(new Long2ObjectOpenHashMap<>());
+    private final Long2ObjectMap<BlockMenu> inventories = Long2ObjectMaps.synchronize(new Long2ObjectOpenHashMap<>());
     private final Map<String, Config> blocksCache = new ConcurrentHashMap<>();
 
     private static int chunkChanges = 0;
@@ -88,6 +94,10 @@ public class BlockStorage {
 
     private static String serializeChunk(World world, int x, int z) {
         return world.getName() + ";Chunk;" + x + ';' + z;
+    }
+
+    private static long packLocation(@Nonnull Location l) {
+        return FastBlockPos.pack(l.getBlockX(), l.getBlockY(), l.getBlockZ());
     }
 
     private static Location deserializeLocation(String l) {
@@ -195,14 +205,14 @@ public class BlockStorage {
             Config blockInfo = parseBlockInfo(l, json);
 
             if (blockInfo != null && blockInfo.contains("id")) {
-                if (storage.putIfAbsent(l, blockInfo) != null) {
+                if (storage.putIfAbsent(packLocation(l), blockInfo) != null) {
                     /*
                      * It should not be possible to have two blocks on the same location.
                      * Ignore the new entry if a block is already present and print an
                      * error to the console (if enabled).
                      */
                     if (Slimefun.getRegistry().logDuplicateBlockEntries()) {
-                        Slimefun.logger().log(Level.INFO, "Ignoring duplicate block @ %d, %d, %d (%s -> %s)".formatted(l.getBlockX(), l.getBlockY(), l.getBlockZ(), blockInfo.getString("id"), storage.get(l).getString("id")));
+                        Slimefun.logger().log(Level.INFO, "Ignoring duplicate block @ %d, %d, %d (%s -> %s)".formatted(l.getBlockX(), l.getBlockY(), l.getBlockZ(), blockInfo.getString("id"), storage.get(packLocation(l)).getString("id")));
                     }
 
                     return;
@@ -257,7 +267,7 @@ public class BlockStorage {
                     }
 
                     if (preset != null) {
-                        inventories.put(l, new BlockMenu(preset, l, cfg));
+                        inventories.put(packLocation(l), new BlockMenu(preset, l, cfg));
                     }
                 } catch (Exception x) {
                     Slimefun.logger().log(Level.SEVERE, x, () -> "An Error occurred while loading this Block Inventory: " + file.getName());
@@ -290,9 +300,8 @@ public class BlockStorage {
     public void computeChanges() {
         changes = blocksCache.size();
 
-        Map<Location, BlockMenu> inventories2 = new HashMap<>(inventories);
-        for (Map.Entry<Location, BlockMenu> entry : inventories2.entrySet()) {
-            changes += entry.getValue().getUnsavedChanges();
+        for (BlockMenu menu : new ArrayList<>(inventories.values())) {
+            changes += menu.getUnsavedChanges();
         }
 
         Map<String, UniversalBlockMenu> universalInventories2 = new HashMap<>(Slimefun.getRegistry().getUniversalInventories());
@@ -341,9 +350,10 @@ public class BlockStorage {
             }
         }
 
-        Map<Location, BlockMenu> unsavedInventories = new HashMap<>(inventories);
-        for (Map.Entry<Location, BlockMenu> entry : unsavedInventories.entrySet()) {
-            entry.getValue().save(entry.getKey());
+        for (Long2ObjectMap.Entry<BlockMenu> entry : new Long2ObjectOpenHashMap<>(inventories).long2ObjectEntrySet()) {
+            long packed = entry.getLongKey();
+            Location l = new Location(world, FastBlockPos.unpackX(packed), FastBlockPos.unpackY(packed), FastBlockPos.unpackZ(packed));
+            entry.getValue().save(l);
         }
 
         Map<String, UniversalBlockMenu> unsavedUniversalInventories = new HashMap<>(Slimefun.getRegistry().getUniversalInventories());
@@ -390,7 +400,15 @@ public class BlockStorage {
      */
     @Nonnull
     public Map<Location, Config> getRawStorage() {
-        return ImmutableMap.copyOf(this.storage);
+        Map<Location, Config> result = new HashMap<>(storage.size());
+
+        for (Long2ObjectMap.Entry<Config> entry : storage.long2ObjectEntrySet()) {
+            long packed = entry.getLongKey();
+            Location l = new Location(world, FastBlockPos.unpackX(packed), FastBlockPos.unpackY(packed), FastBlockPos.unpackZ(packed));
+            result.put(l, entry.getValue());
+        }
+
+        return ImmutableMap.copyOf(result);
     }
 
     /**
@@ -455,7 +473,7 @@ public class BlockStorage {
             return emptyBlockData;
         }
 
-        Config cfg = storage.storage.get(l);
+        Config cfg = storage.storage.get(packLocation(l));
         return cfg == null ? emptyBlockData : cfg;
     }
 
@@ -557,7 +575,7 @@ public class BlockStorage {
         BlockStorage storage = getStorage(l.getWorld());
 
         if (storage != null) {
-            Config cfg = storage.storage.get(l);
+            Config cfg = storage.storage.get(packLocation(l));
             return cfg != null && cfg.getString("id") != null;
         } else {
             return false;
@@ -572,7 +590,7 @@ public class BlockStorage {
             return;
         }
 
-        storage.storage.put(l, cfg);
+        storage.storage.put(packLocation(l), cfg);
         String id = cfg.getString("id");
         BlockMenuPreset preset = BlockMenuPreset.getPreset(id);
 
@@ -584,7 +602,7 @@ public class BlockStorage {
 
                 if (file.exists()) {
                     BlockMenu inventory = new BlockMenu(preset, l, new io.github.bakedlibs.dough.config.Config(file));
-                    storage.inventories.put(l, inventory);
+                    storage.inventories.put(packLocation(l), inventory);
                 } else {
                     storage.loadInventory(l, preset);
                 }
@@ -635,7 +653,11 @@ public class BlockStorage {
         }
         Map<Location, Boolean> toClear = new HashMap<>();
         // Unsafe: get raw storage for this world
-        for (Location location : blockStorage.storage.keySet()) {
+        LongIterator keys = blockStorage.storage.keySet().iterator();
+        while (keys.hasNext()) {
+            long packed = keys.nextLong();
+            Location location = new Location(blockStorage.world, FastBlockPos.unpackX(packed), FastBlockPos.unpackY(packed), FastBlockPos.unpackZ(packed));
+
             if (location.getBlockX() >> 4 == chunkX && location.getBlockZ() >> 4 == chunkZ) {
                 toClear.put(location, destroy);
             }
@@ -661,7 +683,7 @@ public class BlockStorage {
 
         if (hasBlockInfo(l)) {
             refreshCache(storage, l, getLocationInfo(l).getString("id"), null, destroy);
-            storage.storage.remove(l);
+            storage.storage.remove(packLocation(l));
         }
 
         if (destroy) {
@@ -704,15 +726,16 @@ public class BlockStorage {
         Config previousData = getLocationInfo(from);
         setBlockInfo(to, previousData, true);
 
-        if (storage.inventories.containsKey(from)) {
-            BlockMenu menu = storage.inventories.get(from);
-            storage.inventories.put(to, menu);
+        long fromPacked = packLocation(from);
+        if (storage.inventories.containsKey(fromPacked)) {
+            BlockMenu menu = storage.inventories.get(fromPacked);
+            storage.inventories.put(packLocation(to), menu);
             storage.clearInventory(from);
             menu.move(to);
         }
 
         refreshCache(storage, from, previousData.getString("id"), null, true);
-        storage.storage.remove(from);
+        storage.storage.remove(fromPacked);
 
         Slimefun.getTickerTask().disableTicker(from);
     }
@@ -798,7 +821,7 @@ public class BlockStorage {
         }
 
         BlockMenu menu = new BlockMenu(preset, l);
-        inventories.put(l, menu);
+        inventories.put(packLocation(l), menu);
         return menu;
     }
 
@@ -810,7 +833,7 @@ public class BlockStorage {
      *            The location of the Block.
      */
     public void reloadInventory(Location l) {
-        BlockMenu menu = this.inventories.get(l);
+        BlockMenu menu = this.inventories.get(packLocation(l));
 
         if (menu != null) {
             menu.reload();
@@ -827,13 +850,14 @@ public class BlockStorage {
                 Slimefun.runSync(human::closeInventory);
             }
 
-            inventories.get(l).delete(l);
-            inventories.remove(l);
+            long packed = packLocation(l);
+            inventories.get(packed).delete(l);
+            inventories.remove(packed);
         }
     }
 
     public boolean hasInventory(Location l) {
-        return inventories.containsKey(l);
+        return inventories.containsKey(packLocation(l));
     }
 
     public static boolean hasUniversalInventory(String id) {
@@ -874,7 +898,7 @@ public class BlockStorage {
             return null;
         }
 
-        BlockMenu menu = storage.inventories.get(l);
+        BlockMenu menu = storage.inventories.get(packLocation(l));
 
         if (menu != null) {
             return menu;
