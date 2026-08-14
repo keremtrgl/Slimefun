@@ -178,15 +178,28 @@ etc.) keep identical signatures and behavior — this is an internal-only swap. 
   asleep, so no explicit wake call is needed on the "was already awake" path).
 
 ### 7. Migration: Cargo
+
+> **Superseded during implementation (Task 8) — see below for what actually shipped.**
+> The paragraph below was the original design intent. It turned out to be architecturally
+> impossible given how `TickerTask`'s sleep gate works (see "What actually shipped").
+
 `CargoManager`'s `BlockTicker.tick()` ([CargoManager.java:52-55](../../../src/main/java/io/github/thebusybiscuit/slimefun4/implementation/items/cargo/CargoManager.java#L52))
 delegates every call to `CargoNet.getNetworkFromLocationOrCreate(...).tick(b)`. `CargoNet`
 already self-throttles its network-wide routing via a `tickDelayThreshold`/`TICK_DELAY`
-counter ([CargoNet.java:45-148](../../../src/main/java/io/github/thebusybiscuit/slimefun4/core/networks/cargo/CargoNet.java#L45)),
-so the win here is smaller than for `AContainer`: skip the per-node delegate call itself
-when a given node has moved nothing for N consecutive network-tick passes. **Open item for
-the implementation plan:** `CargoNet` internals need a closer read to find (or add) a
-reliable per-node "did this node move an item this pass" signal before wiring up sleep
-correctly — this is implementation-detail work, not a design blocker.
+counter ([CargoNet.java:45-148](../../../src/main/java/io/github/thebusybiscuit/slimefun4/core/networks/cargo/CargoNet.java#L45)).
+The original intent was for a sleeping regulator to still run `super.tick()`/hologram/
+threshold bookkeeping every cycle, skipping only the expensive `mapInputNodes()`/
+`mapOutputNodes()`/`CargoNetworkTask` scheduling.
+
+**What actually shipped:** `TickerTask.tickLocation()`'s `isAsleep(l)` gate (Task 4) sits
+*outside* and *before* any `BlockTicker.tick()` call, and is shared across every machine
+type — it cannot be told "skip only part of my logic." Once a cargo regulator's `Location`
+is asleep, `CargoNet.tick(Block)` (including `super.tick()`) is never invoked at all,
+exactly like `AContainer`. The plan owner decided to accept this: cargo regulators sleep
+their entire tick, bounded to `IDLE_SLEEP_CYCLES` (~20 cycles) or an earlier wake once
+`CargoNetworkTask.run()` observes `movedAnyItem`. Topology/hologram staleness is bounded to
+that same short window — the same trade-off already accepted for `AContainer`'s
+energy-wait bounded polling.
 
 ## Dependency change
 
