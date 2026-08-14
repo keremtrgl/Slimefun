@@ -162,7 +162,11 @@ public class TickerTask implements Runnable {
 
                 Slimefun.runSync(() -> {
                     for (Runnable task : batch) {
-                        task.run();
+                        try {
+                            task.run();
+                        } catch (Exception | LinkageError x) {
+                            Slimefun.logger().log(Level.SEVERE, x, () -> "An Exception occurred while running a batched synchronized ticker task for Slimefun v" + Slimefun.getVersion());
+                        }
                     }
                 });
             }
@@ -316,7 +320,11 @@ public class TickerTask implements Runnable {
         syncTaskQueue.clear();
 
         for (Runnable task : batch) {
-            task.run();
+            try {
+                task.run();
+            } catch (Exception | LinkageError x) {
+                Slimefun.logger().log(Level.SEVERE, x, () -> "An Exception occurred while running a batched synchronized ticker task for Slimefun v" + Slimefun.getVersion());
+            }
         }
     }
 
