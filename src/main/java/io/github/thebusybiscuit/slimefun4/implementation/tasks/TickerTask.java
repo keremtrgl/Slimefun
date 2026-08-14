@@ -1,10 +1,12 @@
 package io.github.thebusybiscuit.slimefun4.implementation.tasks;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -56,6 +58,16 @@ public class TickerTask implements Runnable {
     // These are "Queues" of blocks that need to be removed or moved
     private final Map<Location, Location> movingQueue = new ConcurrentHashMap<>();
     private final Map<Location, Boolean> deletionQueue = new ConcurrentHashMap<>();
+
+    /**
+     * Runnables queued during this cycle's async ticking pass that need to run on
+     * the main thread. Drained via a single Slimefun.runSync(...) call per cycle
+     * instead of scheduling one Bukkit task per synchronized machine. Only ever
+     * appended to and drained from the single async ticking thread (guarded by the
+     * `running` re-entrancy flag in run()), so a plain ArrayList is safe here -
+     * no concurrent-collection is needed.
+     */
+    private final List<Runnable> syncTaskQueue = new ArrayList<>();
 
     /**
      * This Map tracks how many bugs have occurred in a given Location .
@@ -142,6 +154,19 @@ public class TickerTask implements Runnable {
                 }
             }
 
+            // Drain any synchronized-ticker work queued this cycle in a single batched
+            // Slimefun.runSync(...) call, instead of one Bukkit task per synchronized machine.
+            if (!syncTaskQueue.isEmpty()) {
+                List<Runnable> batch = new ArrayList<>(syncTaskQueue);
+                syncTaskQueue.clear();
+
+                Slimefun.runSync(() -> {
+                    for (Runnable task : batch) {
+                        task.run();
+                    }
+                });
+            }
+
             // Move any moved block data
             Iterator<Map.Entry<Location, Location>> moves = movingQueue.entrySet().iterator();
             while (moves.hasNext()) {
@@ -195,7 +220,7 @@ public class TickerTask implements Runnable {
                      * We are inserting a new timestamp because synchronized actions
                      * are always ran with a 50ms delay (1 game tick)
                      */
-                    Slimefun.runSync(() -> {
+                    queueSyncTask(() -> {
                         Block b = l.getBlock();
                         tickBlock(l, b, item, data, System.nanoTime());
                     });
@@ -261,6 +286,38 @@ public class TickerTask implements Runnable {
         Validate.notNull(to, "Target Location cannot be null!");
 
         movingQueue.put(from, to);
+    }
+
+    /**
+     * This queues a {@link Runnable} to run on the main server thread during this
+     * cycle's single batched sync-task drain, instead of scheduling an individual
+     * {@link org.bukkit.scheduler.BukkitTask}. Safe to call from the async ticking
+     * thread only (i.e. from within a {@link BlockTicker#tick(Block, SlimefunItem, Config)}
+     * call, or anything else invoked synchronously from within this class's own
+     * async {@link #run()}).
+     *
+     * @param task
+     *            The {@link Runnable} to run on the main thread this cycle
+     */
+    @ParametersAreNonnullByDefault
+    public void queueSyncTask(Runnable task) {
+        Validate.notNull(task, "Task cannot be null!");
+        syncTaskQueue.add(task);
+    }
+
+    /**
+     * Test-only helper that drains the sync task queue immediately on the calling
+     * thread, without going through Slimefun.runSync (which is a no-op scheduling
+     * indirection under MockBukkit's unit-test mode anyway - see
+     * {@link Slimefun#runSync(Runnable)}).
+     */
+    void drainSyncTaskQueueForTesting() {
+        List<Runnable> batch = new ArrayList<>(syncTaskQueue);
+        syncTaskQueue.clear();
+
+        for (Runnable task : batch) {
+            task.run();
+        }
     }
 
     @ParametersAreNonnullByDefault
