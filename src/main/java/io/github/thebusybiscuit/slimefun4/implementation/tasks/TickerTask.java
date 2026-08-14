@@ -26,6 +26,11 @@ import io.github.bakedlibs.dough.blocks.ChunkPosition;
 import io.github.thebusybiscuit.slimefun4.api.ErrorReport;
 import io.github.thebusybiscuit.slimefun4.api.items.SlimefunItem;
 import io.github.thebusybiscuit.slimefun4.implementation.Slimefun;
+import io.github.thebusybiscuit.slimefun4.utils.FastBlockPos;
+
+import it.unimi.dsi.fastutil.longs.Long2LongMap;
+import it.unimi.dsi.fastutil.longs.Long2LongMaps;
+import it.unimi.dsi.fastutil.longs.Long2LongOpenHashMap;
 
 import me.mrCookieSlime.CSCoreLibPlugin.Configuration.Config;
 import me.mrCookieSlime.Slimefun.Objects.handlers.BlockTicker;
@@ -57,6 +62,30 @@ public class TickerTask implements Runnable {
      * If too many bugs happen, we delete that Location.
      */
     private final Map<BlockPosition, Integer> bugs = new ConcurrentHashMap<>();
+
+    /**
+     * This Map tracks, per chunk, which Locations are currently asleep and the
+     * TickerTask cycle at which they should wake back up. Sleeping locations are
+     * skipped entirely in {@link #tickLocation(Set, Location)} - no BlockStorage
+     * lookup, no profiler entry, no BlockTicker#update() call.
+     *
+     * The inner Long2LongMap is written from the async ticking thread (this class,
+     * single-threaded per run() due to the `running` re-entrancy guard) and from
+     * wake events firing on the main thread (MachineWakeListener, CargoNet), so it
+     * must be a thread-safe map. Individual get/put/remove calls are safe under
+     * Long2LongMaps#synchronize; the lazy-expiry check-then-remove in isAsleep is
+     * intentionally not additionally locked - a race there can only cause a
+     * harmless redundant remove or one extra cycle of staleness, never data
+     * corruption.
+     */
+    private final Map<ChunkPosition, Long2LongMap> sleepingLocations = new ConcurrentHashMap<>();
+
+    /**
+     * Incremented once per run() invocation. Used as the time base for
+     * sleepLocation/isAsleep - these are TickerTask cycles (the custom-ticker-delay
+     * granularity), not raw Minecraft game ticks.
+     */
+    private volatile long currentCycle = 0;
 
     private int tickRate;
     private boolean halted = false;
@@ -91,6 +120,7 @@ public class TickerTask implements Runnable {
             }
 
             running = true;
+            currentCycle++;
             Slimefun.getProfiler().start();
             Set<BlockTicker> tickers = new HashSet<>();
 
@@ -148,6 +178,10 @@ public class TickerTask implements Runnable {
     }
 
     private void tickLocation(@Nonnull Set<BlockTicker> tickers, @Nonnull Location l) {
+        if (isAsleep(l)) {
+            return;
+        }
+
         Config data = BlockStorage.getLocationInfo(l);
         SlimefunItem item = SlimefunItem.getById(data.getString("id"));
 
@@ -385,6 +419,85 @@ public class TickerTask implements Runnable {
                 tickingLocations.remove(chunk);
             }
         }
+    }
+
+    /**
+     * This puts the given {@link Location} to sleep for the given amount of cycles.
+     * A sleeping {@link Location} is skipped entirely during ticking - no
+     * {@link me.mrCookieSlime.Slimefun.api.BlockStorage} lookup, no {@link BlockTicker#update()}
+     * call, no profiler entry. Use this to opt a machine out of ticking while it
+     * provably has no work to do.
+     *
+     * @param l
+     *            The {@link Location} to put to sleep
+     * @param cycles
+     *            The amount of TickerTask cycles to sleep for (not raw game ticks)
+     */
+    @ParametersAreNonnullByDefault
+    public void sleepLocation(Location l, int cycles) {
+        Validate.notNull(l, "Location cannot be null!");
+        Validate.isTrue(cycles > 0, "The amount of cycles must be greater than zero!");
+
+        ChunkPosition chunk = new ChunkPosition(l.getWorld(), l.getBlockX() >> 4, l.getBlockZ() >> 4);
+        Long2LongMap wakeTimes = sleepingLocations.computeIfAbsent(chunk, c -> Long2LongMaps.synchronize(new Long2LongOpenHashMap()));
+        long packed = FastBlockPos.pack(l.getBlockX(), l.getBlockY(), l.getBlockZ());
+        wakeTimes.put(packed, currentCycle + cycles);
+    }
+
+    /**
+     * This immediately wakes up the given {@link Location}, if it was asleep.
+     * Has no effect if the {@link Location} was already awake.
+     *
+     * @param l
+     *            The {@link Location} to wake up
+     */
+    @ParametersAreNonnullByDefault
+    public void wakeLocation(Location l) {
+        Validate.notNull(l, "Location cannot be null!");
+
+        ChunkPosition chunk = new ChunkPosition(l.getWorld(), l.getBlockX() >> 4, l.getBlockZ() >> 4);
+        Long2LongMap wakeTimes = sleepingLocations.get(chunk);
+
+        if (wakeTimes != null) {
+            long packed = FastBlockPos.pack(l.getBlockX(), l.getBlockY(), l.getBlockZ());
+            wakeTimes.remove(packed);
+        }
+    }
+
+    /**
+     * This checks whether the given {@link Location} is currently asleep.
+     * If the sleep period has expired, this also lazily removes the stale entry.
+     *
+     * @param l
+     *            The {@link Location} to check
+     *
+     * @return Whether the given {@link Location} is currently asleep
+     */
+    @ParametersAreNonnullByDefault
+    public boolean isAsleep(Location l) {
+        Validate.notNull(l, "Location cannot be null!");
+
+        ChunkPosition chunk = new ChunkPosition(l.getWorld(), l.getBlockX() >> 4, l.getBlockZ() >> 4);
+        Long2LongMap wakeTimes = sleepingLocations.get(chunk);
+
+        if (wakeTimes == null) {
+            return false;
+        }
+
+        long packed = FastBlockPos.pack(l.getBlockX(), l.getBlockY(), l.getBlockZ());
+
+        if (!wakeTimes.containsKey(packed)) {
+            return false;
+        }
+
+        long wakeAt = wakeTimes.get(packed);
+
+        if (wakeAt <= currentCycle) {
+            wakeTimes.remove(packed);
+            return false;
+        }
+
+        return true;
     }
 
 }

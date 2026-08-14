@@ -2,12 +2,15 @@ package me.mrCookieSlime.Slimefun.Objects.handlers;
 
 import java.util.Optional;
 
+import javax.annotation.Nonnull;
+
 import org.bukkit.block.Block;
 
 import io.github.thebusybiscuit.slimefun4.api.exceptions.IncompatibleItemHandlerException;
 import io.github.thebusybiscuit.slimefun4.api.items.ItemHandler;
 import io.github.thebusybiscuit.slimefun4.api.items.SlimefunItem;
 import io.github.thebusybiscuit.slimefun4.core.attributes.NotPlaceable;
+import io.github.thebusybiscuit.slimefun4.implementation.Slimefun;
 
 import me.mrCookieSlime.CSCoreLibPlugin.Configuration.Config;
 
@@ -72,6 +75,45 @@ public abstract class BlockTicker implements ItemHandler {
      */
     public void startNewTick() {
         unique = true;
+    }
+
+    /**
+     * This puts the given {@link Block}'s {@link Location} to sleep for the given
+     * amount of ticks. A sleeping Location is skipped entirely by the
+     * {@link io.github.thebusybiscuit.slimefun4.implementation.tasks.TickerTask} -
+     * use this when your machine has provably no work to do (e.g. an empty input,
+     * no matching recipe) and register a wake trigger (e.g. via a
+     * {@link org.bukkit.event.Listener}) for when that could change.
+     *
+     * @param b
+     *            The {@link Block} to put to sleep
+     * @param ticks
+     *            The amount of TickerTask cycles to sleep for
+     */
+    protected final void sleep(@Nonnull Block b, int ticks) {
+        Slimefun.getTickerTask().sleepLocation(b.getLocation(), ticks);
+    }
+
+    /**
+     * This immediately wakes up the given {@link Block}, if it was asleep.
+     *
+     * @param b
+     *            The {@link Block} to wake up
+     */
+    protected final void wakeUp(@Nonnull Block b) {
+        Slimefun.getTickerTask().wakeLocation(b.getLocation());
+    }
+
+    /**
+     * This checks whether the given {@link Block} is currently asleep.
+     *
+     * @param b
+     *            The {@link Block} to check
+     *
+     * @return Whether the given {@link Block} is currently asleep
+     */
+    protected final boolean isSleeping(@Nonnull Block b) {
+        return Slimefun.getTickerTask().isAsleep(b.getLocation());
     }
 
 }
