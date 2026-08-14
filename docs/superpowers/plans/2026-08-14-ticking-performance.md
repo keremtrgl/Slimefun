@@ -15,7 +15,7 @@
 - New third-party dependency `it.unimi.dsi:fastutil-core:8.5.19`, relocated under `io.github.thebusybiscuit.slimefun4.libraries.fastutil` via the existing `maven-shade-plugin` relocation block in `pom.xml` (same pattern as `dough`, `paperlib`, `commons-lang`).
 - Sleep/wake "ticks"/"cycles" mean `TickerTask` run cycles (the `custom-ticker-delay` granularity), not raw 1/20s game ticks.
 - No feature is removed or behaviorally changed for a machine that is actively working — sleep only ever applies to provably idle states, and every sleep path has a wake path (event-driven or bounded-poll).
-- This is a local-only project (no git, no GitHub) — every task's "commit" step is replaced with "save the file" since there is no VCS in this working directory. Do not run `git` commands.
+- This project now uses a **local-only** git repo (initialized on branch `ticking-performance-overhaul`, off a `main` baseline commit) purely for per-task commits, diffing, and rollback safety. No remote is configured and nothing is ever pushed anywhere — GitHub is not involved. Every task's "commit"/"save" step means a normal local `git add`/`git commit`.
 
 ---
 
@@ -57,7 +57,7 @@ Expected: prints `Apache Maven 3.9.9`, a Java version line showing Java 16+ comp
 
 - [ ] **Step 4: Save**
 
-This is local build tooling, not part of the plugin source — no further action needed (no git in this project).
+This is local build tooling, not part of the plugin source. Add it to `.gitignore` if not already covered, and commit only the wrapper script: `git add mvnw && git commit -m "Add local mvnw wrapper for build tooling"` (`.mvn-local/` is already gitignored).
 
 ---
 
@@ -96,7 +96,7 @@ Expected: `BUILD SUCCESS`, no errors. This confirms the dependency resolves and 
 
 - [ ] **Step 4: Save**
 
-File is saved on disk (`pom.xml`). No git in this project.
+Stage and commit: `git add pom.xml && git commit -m "Add fastutil-core dependency and shade relocation"`.
 
 ---
 
@@ -252,7 +252,7 @@ Expected: PASS, both tests green.
 
 - [ ] **Step 5: Save**
 
-File saved on disk. No git in this project.
+Stage and commit the changes with a descriptive message, e.g. `git add -A && git commit -m "<short summary of this task's change>"`.
 
 ---
 
@@ -550,7 +550,7 @@ Expected: `BUILD SUCCESS`. `BlockStorage` is used throughout the codebase (recip
 
 - [ ] **Step 6: Save**
 
-Files saved on disk. No git in this project.
+Stage and commit the changes with a descriptive message, e.g. `git add -A && git commit -m "<short summary of this task's change>"`.
 
 ---
 
@@ -654,9 +654,7 @@ class TestTickerTaskSleep {
     @Test
     @DisplayName("Test BlockTicker convenience methods delegate correctly")
     void testBlockTickerConvenienceMethods() {
-        Block block = worldA.getBlockAt(9, 65, 9);
-
-        me.mrCookieSlime.Slimefun.Objects.handlers.BlockTicker ticker = new me.mrCookieSlime.Slimefun.Objects.handlers.BlockTicker() {
+        class TestTicker extends me.mrCookieSlime.Slimefun.Objects.handlers.BlockTicker {
             @Override
             public boolean isSynchronized() {
                 return false;
@@ -678,8 +676,22 @@ class TestTickerTaskSleep {
             boolean triggerIsSleeping(Block b) {
                 return isSleeping(b);
             }
-        };
+        }
 
+        Block block = worldA.getBlockAt(9, 65, 9);
+        TestTicker ticker = new TestTicker();
+
+        Assertions.assertFalse(ticker.triggerIsSleeping(block));
+        Assertions.assertFalse(Slimefun.getTickerTask().isAsleep(block.getLocation()));
+
+        ticker.triggerSleep(block);
+
+        Assertions.assertTrue(ticker.triggerIsSleeping(block));
+        Assertions.assertTrue(Slimefun.getTickerTask().isAsleep(block.getLocation()));
+
+        ticker.triggerWake(block);
+
+        Assertions.assertFalse(ticker.triggerIsSleeping(block));
         Assertions.assertFalse(Slimefun.getTickerTask().isAsleep(block.getLocation()));
     }
 }
@@ -899,7 +911,7 @@ Expected: `BUILD SUCCESS` — confirms the new early-return in `tickLocation` do
 
 - [ ] **Step 7: Save**
 
-Files saved on disk. No git in this project.
+Stage and commit the changes with a descriptive message, e.g. `git add -A && git commit -m "<short summary of this task's change>"`.
 
 ---
 
@@ -1090,7 +1102,7 @@ Expected: `BUILD SUCCESS` — confirms synchronized `BlockTicker`s (e.g. anythin
 
 - [ ] **Step 6: Save**
 
-Files saved on disk. No git in this project.
+Stage and commit the changes with a descriptive message, e.g. `git add -A && git commit -m "<short summary of this task's change>"`.
 
 ---
 
@@ -1267,7 +1279,7 @@ Expected: PASS, both tests green.
 
 - [ ] **Step 6: Save**
 
-Files saved on disk. No git in this project.
+Stage and commit the changes with a descriptive message, e.g. `git add -A && git commit -m "<short summary of this task's change>"`.
 
 ---
 
@@ -1458,7 +1470,7 @@ Expected: `BUILD SUCCESS`. `AContainer` is the base class for furnaces, autocraf
 
 - [ ] **Step 6: Save**
 
-Files saved on disk. No git in this project.
+Stage and commit the changes with a descriptive message, e.g. `git add -A && git commit -m "<short summary of this task's change>"`.
 
 ---
 
@@ -1690,7 +1702,7 @@ Expected: `BUILD SUCCESS`.
 
 - [ ] **Step 7: Save**
 
-Files saved on disk. No git in this project.
+Stage and commit the changes with a descriptive message, e.g. `git add -A && git commit -m "<short summary of this task's change>"`.
 
 ---
 
@@ -1932,7 +1944,7 @@ Expected: `BUILD SUCCESS` — confirms energy and cargo network resolution still
 
 - [ ] **Step 7: Save**
 
-Files saved on disk. No git in this project.
+Stage and commit the changes with a descriptive message, e.g. `git add -A && git commit -m "<short summary of this task's change>"`.
 
 ---
 
@@ -2171,7 +2183,7 @@ Expected: `BUILD SUCCESS`.
 
 - [ ] **Step 8: Save**
 
-Files saved on disk. No git in this project.
+Stage and commit the changes with a descriptive message, e.g. `git add -A && git commit -m "<short summary of this task's change>"`.
 
 ---
 
