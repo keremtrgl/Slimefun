@@ -86,6 +86,7 @@ import io.github.thebusybiscuit.slimefun4.implementation.listeners.HopperListene
 import io.github.thebusybiscuit.slimefun4.implementation.listeners.ItemDropListener;
 import io.github.thebusybiscuit.slimefun4.implementation.listeners.ItemPickupListener;
 import io.github.thebusybiscuit.slimefun4.implementation.listeners.JoinListener;
+import io.github.thebusybiscuit.slimefun4.implementation.listeners.MachineWakeListener;
 import io.github.thebusybiscuit.slimefun4.implementation.listeners.MiddleClickListener;
 import io.github.thebusybiscuit.slimefun4.implementation.listeners.MiningAndroidListener;
 import io.github.thebusybiscuit.slimefun4.implementation.listeners.MultiBlockListener;
@@ -618,6 +619,7 @@ public class Slimefun extends JavaPlugin implements SlimefunAddon {
         new SlimefunItemConsumeListener(this);
         new BlockPhysicsListener(this);
         new CargoNodeListener(this);
+        new MachineWakeListener(this);
         new MultiBlockListener(this);
         new GadgetsListener(this);
         new DispenserListener(this);
