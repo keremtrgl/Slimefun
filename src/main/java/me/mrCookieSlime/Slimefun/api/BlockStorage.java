@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -300,7 +301,18 @@ public class BlockStorage {
     public void computeChanges() {
         changes = blocksCache.size();
 
-        for (BlockMenu menu : new ArrayList<>(inventories.values())) {
+        // Long2ObjectMaps.synchronize() only synchronizes individual accessor calls;
+        // values()/keySet()/entrySet() iterators are NOT synchronized on their own
+        // (same contract as Collections.synchronizedMap). Take the defensive copy
+        // itself under the map's lock so a concurrent writer (e.g. the async
+        // AutoSavingService thread racing a block place/break on the main thread)
+        // can't be observed mid-resize by this iteration.
+        List<BlockMenu> inventorySnapshot;
+        synchronized (inventories) {
+            inventorySnapshot = new ArrayList<>(inventories.values());
+        }
+
+        for (BlockMenu menu : inventorySnapshot) {
             changes += menu.getUnsavedChanges();
         }
 
@@ -350,7 +362,14 @@ public class BlockStorage {
             }
         }
 
-        for (Long2ObjectMap.Entry<BlockMenu> entry : new Long2ObjectOpenHashMap<>(inventories).long2ObjectEntrySet()) {
+        // Same reasoning as computeChanges(): copy under the map's lock, then iterate
+        // (and do I/O via BlockMenu#save) on the unsynchronized, private copy.
+        Long2ObjectMap<BlockMenu> unsavedInventories;
+        synchronized (inventories) {
+            unsavedInventories = new Long2ObjectOpenHashMap<>(inventories);
+        }
+
+        for (Long2ObjectMap.Entry<BlockMenu> entry : unsavedInventories.long2ObjectEntrySet()) {
             long packed = entry.getLongKey();
             Location l = new Location(world, FastBlockPos.unpackX(packed), FastBlockPos.unpackY(packed), FastBlockPos.unpackZ(packed));
             entry.getValue().save(l);
@@ -402,10 +421,15 @@ public class BlockStorage {
     public Map<Location, Config> getRawStorage() {
         Map<Location, Config> result = new HashMap<>(storage.size());
 
-        for (Long2ObjectMap.Entry<Config> entry : storage.long2ObjectEntrySet()) {
-            long packed = entry.getLongKey();
-            Location l = new Location(world, FastBlockPos.unpackX(packed), FastBlockPos.unpackY(packed), FastBlockPos.unpackZ(packed));
-            result.put(l, entry.getValue());
+        // Build the whole result map under storage's lock: no I/O happens here, so
+        // holding the lock for the duration is cheap and keeps this iteration safe
+        // against a concurrent writer (see computeChanges() for the full rationale).
+        synchronized (storage) {
+            for (Long2ObjectMap.Entry<Config> entry : storage.long2ObjectEntrySet()) {
+                long packed = entry.getLongKey();
+                Location l = new Location(world, FastBlockPos.unpackX(packed), FastBlockPos.unpackY(packed), FastBlockPos.unpackZ(packed));
+                result.put(l, entry.getValue());
+            }
         }
 
         return ImmutableMap.copyOf(result);
@@ -653,13 +677,18 @@ public class BlockStorage {
         }
         Map<Location, Boolean> toClear = new HashMap<>();
         // Unsafe: get raw storage for this world
-        LongIterator keys = blockStorage.storage.keySet().iterator();
-        while (keys.hasNext()) {
-            long packed = keys.nextLong();
-            Location location = new Location(blockStorage.world, FastBlockPos.unpackX(packed), FastBlockPos.unpackY(packed), FastBlockPos.unpackZ(packed));
+        // Hold storage's lock for the whole scan: this loop does no I/O, just builds
+        // an in-memory map, so it's cheap and keeps the iteration safe against a
+        // concurrent writer (see computeChanges() for the full rationale).
+        synchronized (blockStorage.storage) {
+            LongIterator keys = blockStorage.storage.keySet().iterator();
+            while (keys.hasNext()) {
+                long packed = keys.nextLong();
+                Location location = new Location(blockStorage.world, FastBlockPos.unpackX(packed), FastBlockPos.unpackY(packed), FastBlockPos.unpackZ(packed));
 
-            if (location.getBlockX() >> 4 == chunkX && location.getBlockZ() >> 4 == chunkZ) {
-                toClear.put(location, destroy);
+                if (location.getBlockX() >> 4 == chunkX && location.getBlockZ() >> 4 == chunkZ) {
+                    toClear.put(location, destroy);
+                }
             }
         }
         Slimefun.getTickerTask().queueDelete(toClear);

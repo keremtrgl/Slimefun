@@ -4,6 +4,7 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.entity.Player;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -16,6 +17,9 @@ import io.github.thebusybiscuit.slimefun4.test.TestUtilities;
 
 import be.seeseemelk.mockbukkit.MockBukkit;
 import be.seeseemelk.mockbukkit.ServerMock;
+import me.mrCookieSlime.Slimefun.api.inventory.BlockMenu;
+import me.mrCookieSlime.Slimefun.api.inventory.BlockMenuPreset;
+import me.mrCookieSlime.Slimefun.api.item_transport.ItemTransportFlow;
 
 class TestBlockStorage {
 
@@ -121,5 +125,61 @@ class TestBlockStorage {
         Assertions.assertNotNull(raw);
         Assertions.assertEquals("RAW_MACHINE", raw.get(block.getLocation()).getString("id"));
         Assertions.assertThrows(UnsupportedOperationException.class, () -> raw.put(block.getLocation(), null));
+    }
+
+    @Test
+    @DisplayName("Test moveLocationInfoUnsafely also transfers an existing inventory to the new location")
+    void testMoveLocationInfoTransfersInventory() {
+        Block from = world.getBlockAt(30, 65, 30);
+        Block to = world.getBlockAt(40, 65, 40);
+
+        BlockStorage.addBlockInfo(from, "id", "INVENTORY_MACHINE");
+
+        BlockStorage storage = BlockStorage.getStorage(world);
+        Assertions.assertNotNull(storage);
+
+        // Give `from` a real inventory (bypassing setBlockInfo's own preset-lookup
+        // plumbing, per this test's own minimal BlockMenuPreset) so the
+        // storage.inventories.containsKey(fromPacked) branch in
+        // moveLocationInfoUnsafely is actually exercised, not just the block-info
+        // copy that the other move test already covers.
+        TestBlockMenuPreset preset = new TestBlockMenuPreset("test_inventory_preset_" + System.nanoTime());
+        BlockMenu original = storage.loadInventory(from.getLocation(), preset);
+
+        Assertions.assertTrue(BlockStorage.hasInventory(from));
+        Assertions.assertFalse(BlockStorage.hasInventory(to));
+
+        BlockStorage.moveLocationInfoUnsafely(from.getLocation(), to.getLocation());
+
+        Assertions.assertFalse(BlockStorage.hasInventory(from));
+        Assertions.assertTrue(BlockStorage.hasInventory(to));
+        Assertions.assertSame(original, BlockStorage.getInventory(to.getLocation()));
+    }
+
+    /**
+     * A minimal, self-contained {@link BlockMenuPreset} used only to give a test
+     * {@link Block} a real inventory, without needing a fully registered
+     * {@link io.github.thebusybiscuit.slimefun4.api.items.SlimefunItem}.
+     */
+    private static final class TestBlockMenuPreset extends BlockMenuPreset {
+
+        TestBlockMenuPreset(String id) {
+            super(id, "Test Inventory");
+        }
+
+        @Override
+        public void init() {
+            setSize(9);
+        }
+
+        @Override
+        public boolean canOpen(Block b, Player p) {
+            return true;
+        }
+
+        @Override
+        public int[] getSlotsAccessedByItemTransport(ItemTransportFlow flow) {
+            return new int[0];
+        }
     }
 }
