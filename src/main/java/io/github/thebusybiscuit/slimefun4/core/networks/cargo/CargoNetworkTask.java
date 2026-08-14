@@ -66,6 +66,7 @@ class CargoNetworkTask implements Runnable {
     @Override
     public void run() {
         long timestamp = System.nanoTime();
+        boolean movedAnyItem = false;
 
         try {
             /**
@@ -78,7 +79,9 @@ class CargoNetworkTask implements Runnable {
                 Location input = entry.getKey();
                 Optional<Block> attachedBlock = network.getAttachedBlock(input);
 
-                attachedBlock.ifPresent(block -> routeItems(input, block, entry.getValue(), outputs));
+                if (attachedBlock.isPresent() && routeItems(input, attachedBlock.get(), entry.getValue(), outputs)) {
+                    movedAnyItem = true;
+                }
 
                 // This will prevent this timings from showing up for the Cargo Manager
                 timestamp += Slimefun.getProfiler().closeEntry(entry.getKey(), inputNode, nodeTimestamp);
@@ -89,14 +92,20 @@ class CargoNetworkTask implements Runnable {
 
         // Submit a timings report
         Slimefun.getProfiler().closeEntry(network.getRegulator(), SlimefunItems.CARGO_MANAGER.getItem(), timestamp);
+
+        if (movedAnyItem) {
+            Slimefun.getTickerTask().wakeLocation(network.getRegulator());
+        } else {
+            Slimefun.getTickerTask().sleepLocation(network.getRegulator(), CargoNet.IDLE_SLEEP_CYCLES);
+        }
     }
 
     @ParametersAreNonnullByDefault
-    private void routeItems(Location inputNode, Block inputTarget, int frequency, Map<Integer, List<Location>> outputNodes) {
+    private boolean routeItems(Location inputNode, Block inputTarget, int frequency, Map<Integer, List<Location>> outputNodes) {
         ItemStackAndInteger slot = CargoUtils.withdraw(network, inventories, inputNode.getBlock(), inputTarget);
 
         if (slot == null) {
-            return;
+            return false;
         }
 
         ItemStack stack = slot.getItem();
@@ -110,6 +119,11 @@ class CargoNetworkTask implements Runnable {
         if (stack != null) {
             insertItem(inputTarget, previousSlot, stack);
         }
+
+        // Something was withdrawn from an input this pass, so the network isn't idle -
+        // conservative signal: even if it got reinserted unchanged (no valid destination),
+        // there's an item waiting that could move once a destination frees up.
+        return true;
     }
 
     @ParametersAreNonnullByDefault

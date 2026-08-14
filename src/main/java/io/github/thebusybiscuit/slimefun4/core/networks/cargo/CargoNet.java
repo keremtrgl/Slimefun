@@ -43,6 +43,7 @@ public class CargoNet extends AbstractItemNetwork implements HologramOwner {
 
     private static final int RANGE = 5;
     private static final int TICK_DELAY = Slimefun.getCfg().getInt("networks.cargo-ticker-delay");
+    static final int IDLE_SLEEP_CYCLES = 20;
 
     private final Set<Location> inputNodes = new HashSet<>();
     private final Set<Location> outputNodes = new HashSet<>();
@@ -147,6 +148,10 @@ public class CargoNet extends AbstractItemNetwork implements HologramOwner {
             // Reset the internal threshold, so we can start skipping again
             tickDelayThreshold = 0;
 
+            if (Slimefun.getTickerTask().isAsleep(b.getLocation())) {
+                return;
+            }
+
             Map<Location, Integer> inputs = mapInputNodes();
             Map<Integer, List<Location>> outputs = mapOutputNodes();
 
@@ -157,7 +162,7 @@ public class CargoNet extends AbstractItemNetwork implements HologramOwner {
             Slimefun.getProfiler().scheduleEntries(inputs.size() + 1);
 
             CargoNetworkTask runnable = new CargoNetworkTask(this, inputs, outputs);
-            Slimefun.runSync(runnable);
+            Slimefun.getTickerTask().queueSyncTask(runnable);
         }
     }
 
