@@ -211,6 +211,10 @@
                             <pattern>org.apache.commons.lang</pattern>
                             <shadedPattern>io.github.thebusybiscuit.slimefun4.libraries.commons.lang</shadedPattern>
                         </relocation>
+                        <relocation>
+                            <pattern>it.unimi.dsi.fastutil</pattern>
+                            <shadedPattern>io.github.thebusybiscuit.slimefun4.libraries.fastutil</shadedPattern>
+                        </relocation>
                     </relocations>
 
                     <!-- Exclude unneeded metadata files from shaded dependencies -->
@@ -372,6 +376,11 @@
             <artifactId>paperlib</artifactId>
             <version>1.0.8</version>
             <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>it.unimi.dsi</groupId>
+            <artifactId>fastutil-core</artifactId>
+            <version>8.5.19</version>
         </dependency>
 
         <!-- Paper -->
