@@ -49,9 +49,6 @@ class TestMachineWakeListener {
         World world = TestUtilities.createWorld(server);
         Block block = new BlockMock(Material.CHEST, new Location(world, TestUtilities.randomInt(), 100, TestUtilities.randomInt()));
 
-        // Register the world with BlockStorage so addBlockInfo will work
-        Slimefun.getRegistry().getWorlds().put(world.getName(), new BlockStorage(world));
-
         Location l = block.getLocation();
 
         BlockStorage.addBlockInfo(block, "id", "TEST_MACHINE");
@@ -73,9 +70,6 @@ class TestMachineWakeListener {
     void testInteractIgnoresNonSlimefunBlock() {
         World world = TestUtilities.createWorld(server);
         Block block = new BlockMock(Material.CHEST, new Location(world, TestUtilities.randomInt(), 100, TestUtilities.randomInt()));
-
-        // Register the world with BlockStorage
-        Slimefun.getRegistry().getWorlds().put(world.getName(), new BlockStorage(world));
 
         Player player = server.addPlayer();
         ItemStack itemStack = new ItemStack(Material.AIR);
