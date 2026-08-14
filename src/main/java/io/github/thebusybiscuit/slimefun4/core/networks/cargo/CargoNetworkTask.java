@@ -96,6 +96,12 @@ class CargoNetworkTask implements Runnable {
         if (movedAnyItem) {
             Slimefun.getTickerTask().wakeLocation(network.getRegulator());
         } else {
+            // Nothing moved this pass - put the regulator to sleep. Because TickerTask's own
+            // tickLocation(Set, Location) gates on this exact Location, this skips the entire
+            // CargoNet#tick(Block) call (including super.tick() and the hologram update) for
+            // up to IDLE_SLEEP_CYCLES cycles, not just the routing work in this class - the
+            // same full-tick-skip trade-off already accepted for AContainer. It ends early
+            // as soon as a later pass moves something (wakeLocation above).
             Slimefun.getTickerTask().sleepLocation(network.getRegulator(), CargoNet.IDLE_SLEEP_CYCLES);
         }
     }

@@ -148,10 +148,15 @@ public class CargoNet extends AbstractItemNetwork implements HologramOwner {
             // Reset the internal threshold, so we can start skipping again
             tickDelayThreshold = 0;
 
-            if (Slimefun.getTickerTask().isAsleep(b.getLocation())) {
-                return;
-            }
-
+            // Note: there is no explicit isAsleep() check here. When CargoNetworkTask#run()
+            // puts this regulator's Location to sleep (see IDLE_SLEEP_CYCLES below), that
+            // exact Location is also what TickerTask#tickLocation(Set, Location) gates on -
+            // so once asleep, this entire tick(Block) method (including super.tick() and the
+            // hologram update above) is skipped by TickerTask before it's ever called, not
+            // just the block below. A guard here would be dead code. The sleep is bounded to
+            // IDLE_SLEEP_CYCLES cycles and ends early via CargoNetworkTask's movedAnyItem-driven
+            // wakeLocation() call, the same bounded-staleness trade-off already accepted for
+            // AContainer's full-tick sleep.
             Map<Location, Integer> inputs = mapInputNodes();
             Map<Integer, List<Location>> outputs = mapOutputNodes();
 
