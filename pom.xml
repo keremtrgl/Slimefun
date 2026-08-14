@@ -154,6 +154,13 @@
                 <configuration>
                     <junitArtifactName>org.junit.jupiter:junit-jupiter</junitArtifactName>
                     <trimStackTrace>false</trimStackTrace>
+                    <!--
+                        Byte Buddy (a Mockito/MockBukkit dependency) only officially supports up to
+                        JDK 24. On newer JDKs it refuses to run unless explicitly told it's on
+                        unsupported-but-likely-fine territory. Without this, any test that calls
+                        MockBukkit.load(...) fails at @BeforeAll on JDK 25+.
+                    -->
+                    <argLine>-Dnet.bytebuddy.experimental=true</argLine>
                 </configuration>
             </plugin>
 
