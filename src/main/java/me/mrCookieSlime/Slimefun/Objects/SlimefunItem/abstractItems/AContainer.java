@@ -29,6 +29,7 @@ import io.github.thebusybiscuit.slimefun4.core.attributes.MachineProcessHolder;
 import io.github.thebusybiscuit.slimefun4.core.handlers.BlockBreakHandler;
 import io.github.thebusybiscuit.slimefun4.core.machines.MachineProcessor;
 import io.github.thebusybiscuit.slimefun4.core.networks.energy.EnergyNetComponentType;
+import io.github.thebusybiscuit.slimefun4.implementation.Slimefun;
 import io.github.thebusybiscuit.slimefun4.implementation.handlers.SimpleBlockBreakHandler;
 import io.github.thebusybiscuit.slimefun4.implementation.operations.CraftingOperation;
 import io.github.thebusybiscuit.slimefun4.utils.ChestMenuUtils;
@@ -48,6 +49,9 @@ public abstract class AContainer extends SlimefunItem implements InventoryBlock,
     private static final int[] BORDER = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 13, 31, 36, 37, 38, 39, 40, 41, 42, 43, 44 };
     private static final int[] BORDER_IN = { 9, 10, 11, 12, 18, 21, 27, 28, 29, 30 };
     private static final int[] BORDER_OUT = { 14, 15, 16, 17, 23, 26, 32, 33, 34, 35 };
+
+    private static final int IDLE_SLEEP_TICKS = 30;
+    private static final int ENERGY_WAIT_SLEEP_TICKS = 10;
 
     protected final List<MachineRecipe> recipes = new ArrayList<>();
     private final MachineProcessor<CraftingOperation> processor = new MachineProcessor<>(this);
@@ -369,6 +373,12 @@ public abstract class AContainer extends SlimefunItem implements InventoryBlock,
 
                     processor.endOperation(b);
                 }
+            } else {
+                // Blocked on energy - no "energy became available" event exists in the
+                // energy-net system, so use a short, self-renewing poll instead of an
+                // indefinite sleep. Still skips findNextRecipe()'s HashMap allocations
+                // while waiting, just with bounded (not event-driven) staleness.
+                Slimefun.getTickerTask().sleepLocation(b.getLocation(), ENERGY_WAIT_SLEEP_TICKS);
             }
         } else {
             MachineRecipe next = findNextRecipe(inv);
@@ -379,6 +389,10 @@ public abstract class AContainer extends SlimefunItem implements InventoryBlock,
 
                 // Fixes #3534 - Update indicator immediately
                 processor.updateProgressBar(inv, 22, currentOperation);
+            } else {
+                // No matching recipe for the current input - nothing will change until
+                // new input arrives (MachineWakeListener) or a Player opens the GUI.
+                Slimefun.getTickerTask().sleepLocation(b.getLocation(), IDLE_SLEEP_TICKS);
             }
         }
     }
