@@ -1,0 +1,6 @@
+target/
+.mvn-local/
+*.class
+.idea/
+*.iml
+.superpowers/
