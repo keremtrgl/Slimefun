@@ -70,6 +70,28 @@ class TestTickerTaskSleep {
     }
 
     @Test
+    @DisplayName("Test a sleeping Location wakes itself back up once enough cycles have elapsed")
+    void testSleepExpiresAfterCycles() {
+        Location l = worldA.getBlockAt(4, 65, 4).getLocation();
+
+        // Sleep for 2 cycles - TickerTask#run() is public and safe to invoke directly
+        // in a MockBukkit context (it does not depend on the Bukkit scheduler actually
+        // firing), so we use it here to advance currentCycle without any test-only
+        // production code.
+        Slimefun.getTickerTask().sleepLocation(l, 2);
+        Assertions.assertTrue(Slimefun.getTickerTask().isAsleep(l));
+
+        // 1 cycle has elapsed - not enough yet, should still be asleep
+        Slimefun.getTickerTask().run();
+        Assertions.assertTrue(Slimefun.getTickerTask().isAsleep(l));
+
+        // 2 cycles have now elapsed - the lazy-expiry branch in isAsleep should fire
+        // and report the Location as awake again
+        Slimefun.getTickerTask().run();
+        Assertions.assertFalse(Slimefun.getTickerTask().isAsleep(l));
+    }
+
+    @Test
     @DisplayName("Test two identical local coordinates in different worlds don't share sleep state")
     void testCrossWorldIsolation() {
         Block blockInA = worldA.getBlockAt(7, 65, 7);
