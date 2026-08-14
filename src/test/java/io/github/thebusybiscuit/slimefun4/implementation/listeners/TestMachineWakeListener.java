@@ -33,6 +33,9 @@ class TestMachineWakeListener {
     public static void load() {
         server = MockBukkit.mock();
         plugin = MockBukkit.load(Slimefun.class);
+
+        // Manually register the listener since MockBukkit.load() doesn't invoke registerListeners()
+        new MachineWakeListener(plugin);
     }
 
     @AfterAll
