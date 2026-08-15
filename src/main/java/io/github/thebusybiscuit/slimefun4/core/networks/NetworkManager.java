@@ -3,7 +3,9 @@ package io.github.thebusybiscuit.slimefun4.core.networks;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Level;
 
@@ -50,6 +52,18 @@ public class NetworkManager {
      * if insertions come at a slight cost.
      */
     private final List<Network> networks = new CopyOnWriteArrayList<>();
+
+    /**
+     * A direct index from a Network's regulator Location to the Network itself,
+     * kept in lock-step with {@link #networks} via registerNetwork/unregisterNetwork.
+     * This exists purely to make the extremely common "what network does my own
+     * regulator belong to" query (asked every tick by every EnergyRegulator and
+     * CargoManager) O(1) instead of an O(total networks) linear scan through
+     * {@link #getNetworkFromLocation(Location, Class)}. General "what networks
+     * touch this arbitrary Location" queries still use the linear scan, since
+     * that requires checking every node in every network, not just regulators.
+     */
+    private final Map<Location, Network> networksByRegulator = new ConcurrentHashMap<>();
 
     /**
      * This creates a new {@link NetworkManager} with the given capacity.
@@ -136,6 +150,39 @@ public class NetworkManager {
         return Optional.empty();
     }
 
+    /**
+     * This is an O(1) lookup for the {@link Network} whose regulator is at the
+     * given {@link Location}, as opposed to {@link #getNetworkFromLocation(Location, Class)}
+     * which scans every registered {@link Network}. Use this when you already know
+     * you're querying a regulator's own Location (e.g. from within that regulator's
+     * own {@link me.mrCookieSlime.Slimefun.Objects.handlers.BlockTicker}) - for
+     * arbitrary Locations that might be any node in a Network, use
+     * {@link #getNetworksFromLocation(Location, Class)} instead.
+     *
+     * @param regulator
+     *            The regulator {@link Location} to look up
+     * @param type
+     *            The {@link Network} subtype to filter by
+     *
+     * @return The {@link Network} at that regulator, if one exists and matches the given type
+     */
+    @Nonnull
+    public <T extends Network> Optional<T> getNetworkAtRegulator(@Nullable Location regulator, @Nonnull Class<T> type) {
+        if (regulator == null) {
+            return Optional.empty();
+        }
+
+        Validate.notNull(type, "Type must not be null");
+
+        Network network = networksByRegulator.get(regulator);
+
+        if (type.isInstance(network)) {
+            return Optional.of(type.cast(network));
+        }
+
+        return Optional.empty();
+    }
+
     @Nonnull
     public <T extends Network> List<T> getNetworksFromLocation(@Nullable Location l, @Nonnull Class<T> type) {
         if (l == null) {
@@ -164,17 +211,19 @@ public class NetworkManager {
     public void registerNetwork(@Nonnull Network network) {
         Validate.notNull(network, "Cannot register a null Network");
         networks.add(network);
+        networksByRegulator.put(network.getRegulator(), network);
     }
 
     /**
      * This removes a {@link Network} from the network system.
-     * 
+     *
      * @param network
      *            The {@link Network} to remove
      */
     public void unregisterNetwork(@Nonnull Network network) {
         Validate.notNull(network, "Cannot unregister a null Network");
         networks.remove(network);
+        networksByRegulator.remove(network.getRegulator());
     }
 
     /**

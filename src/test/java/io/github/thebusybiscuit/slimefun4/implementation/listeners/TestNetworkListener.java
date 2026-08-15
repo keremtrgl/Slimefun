@@ -48,6 +48,7 @@ class TestNetworkListener {
 
         Network network = Mockito.mock(Network.class);
         Mockito.when(network.connectsTo(l)).thenReturn(true);
+        Mockito.when(network.getRegulator()).thenReturn(l);
         manager.registerNetwork(network);
 
         listener.onBlockBreak(new BlockBreakEvent(l.getBlock(), server.addPlayer()));
@@ -63,6 +64,7 @@ class TestNetworkListener {
 
         Network network = Mockito.mock(Network.class);
         Mockito.when(network.connectsTo(l)).thenReturn(true);
+        Mockito.when(network.getRegulator()).thenReturn(l);
         manager.registerNetwork(network);
 
         BlockState state = Mockito.mock(BlockState.class);

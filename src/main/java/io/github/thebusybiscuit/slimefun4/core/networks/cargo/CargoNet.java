@@ -56,7 +56,7 @@ public class CargoNet extends AbstractItemNetwork implements HologramOwner {
     }
 
     public static @Nonnull CargoNet getNetworkFromLocationOrCreate(@Nonnull Location l) {
-        Optional<CargoNet> cargoNetwork = Slimefun.getNetworkManager().getNetworkFromLocation(l, CargoNet.class);
+        Optional<CargoNet> cargoNetwork = Slimefun.getNetworkManager().getNetworkAtRegulator(l, CargoNet.class);
 
         if (cargoNetwork.isPresent()) {
             return cargoNetwork.get();

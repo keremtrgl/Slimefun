@@ -334,7 +334,7 @@ public class EnergyNet extends Network implements HologramOwner {
      */
     @Nonnull
     public static EnergyNet getNetworkFromLocationOrCreate(@Nonnull Location l) {
-        Optional<EnergyNet> energyNetwork = Slimefun.getNetworkManager().getNetworkFromLocation(l, EnergyNet.class);
+        Optional<EnergyNet> energyNetwork = Slimefun.getNetworkManager().getNetworkAtRegulator(l, EnergyNet.class);
 
         if (energyNetwork.isPresent()) {
             return energyNetwork.get();
