@@ -40,14 +40,16 @@ public abstract class CropGrowthAccelerator extends AbstractGrowthAccelerator {
     protected void tick(Block b) {
         BlockMenu inv = BlockStorage.getInventory(b);
 
-        if (getCharge(b.getLocation()) >= getEnergyConsumption()) {
-            for (int x = -getRadius(); x <= getRadius(); x++) {
-                for (int z = -getRadius(); z <= getRadius(); z++) {
-                    Block block = b.getRelative(x, 0, z);
+        if (getCharge(b.getLocation()) < getEnergyConsumption() || !hasFertilizer(inv)) {
+            return;
+        }
 
-                    if (SlimefunTag.CROP_GROWTH_ACCELERATOR_BLOCKS.isTagged(block.getType()) && grow(b, inv, block)) {
-                        return;
-                    }
+        for (int x = -getRadius(); x <= getRadius(); x++) {
+            for (int z = -getRadius(); z <= getRadius(); z++) {
+                Block block = b.getRelative(x, 0, z);
+
+                if (SlimefunTag.CROP_GROWTH_ACCELERATOR_BLOCKS.isTagged(block.getType()) && grow(b, inv, block)) {
+                    return;
                 }
             }
         }
@@ -68,6 +70,16 @@ public abstract class CropGrowthAccelerator extends AbstractGrowthAccelerator {
                     crop.getWorld().spawnParticle(VersionedParticle.HAPPY_VILLAGER, crop.getLocation().add(0.5D, 0.5D, 0.5D), 4, 0.1F, 0.1F, 0.1F);
                     return true;
                 }
+            }
+        }
+
+        return false;
+    }
+
+    private boolean hasFertilizer(BlockMenu inv) {
+        for (int slot : getInputSlots()) {
+            if (SlimefunUtils.isItemSimilar(inv.getItemInSlot(slot), organicFertilizer, false, false)) {
+                return true;
             }
         }
 
