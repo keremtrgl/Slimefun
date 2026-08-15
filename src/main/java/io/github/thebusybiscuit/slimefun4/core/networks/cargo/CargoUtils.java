@@ -278,6 +278,7 @@ final class CargoUtils {
 
             if (itemInSlot == null) {
                 menu.replaceExistingItem(slot, stack);
+                wakeTarget(target);
                 return null;
             }
 
@@ -301,6 +302,7 @@ final class CargoUtils {
                     }
 
                     menu.replaceExistingItem(slot, itemInSlot);
+                    wakeTarget(target);
                     return stack;
                 } else if (smartFill) {
                     return stack;
@@ -309,6 +311,26 @@ final class CargoUtils {
         }
 
         return stack;
+    }
+
+    /**
+     * This wakes up a {@link Block} that just received items from the {@link CargoNet}.
+     *
+     * Cargo delivery writes straight into the target's {@link DirtyChestMenu} and fires no
+     * Bukkit event at all, so {@link io.github.thebusybiscuit.slimefun4.implementation.listeners.MachineWakeListener}
+     * can never see it. Without this call a machine that put itself to sleep because its
+     * input buffer was empty would keep sleeping for up to its full sleep window, even
+     * though cargo just handed it new work.
+     *
+     * Only called on the branches where an item was actually delivered, and only for
+     * targets that own a {@link DirtyChestMenu} - which is exactly the set of Slimefun
+     * blocks that can be asleep in the first place.
+     *
+     * @param target
+     *            The {@link Block} that just received an item
+     */
+    private static void wakeTarget(@Nonnull Block target) {
+        Slimefun.getTickerTask().wakeLocation(target.getLocation());
     }
 
     @Nullable
