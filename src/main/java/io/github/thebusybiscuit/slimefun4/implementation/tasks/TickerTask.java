@@ -8,8 +8,10 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.logging.Level;
 
 import javax.annotation.Nonnull;
@@ -62,12 +64,16 @@ public class TickerTask implements Runnable {
     /**
      * Runnables queued during this cycle's async ticking pass that need to run on
      * the main thread. Drained via a single Slimefun.runSync(...) call per cycle
-     * instead of scheduling one Bukkit task per synchronized machine. Only ever
-     * appended to and drained from the single async ticking thread (guarded by the
-     * `running` re-entrancy flag in run()), so a plain ArrayList is safe here -
-     * no concurrent-collection is needed.
+     * instead of scheduling one Bukkit task per synchronized machine.
+     *
+     * This is a {@link ConcurrentLinkedQueue} rather than a plain {@link ArrayList}
+     * because {@link #queueSyncTask(Runnable)} is public API - addons will find it, and
+     * the only thing that used to protect the queue was the non-volatile `running`
+     * re-entrancy flag, whose check-then-set is neither atomic nor a memory barrier.
+     * Draining via poll() removes that dependency entirely and makes queueSyncTask safe
+     * to call from any thread, which is the right contract for public API.
      */
-    private final List<Runnable> syncTaskQueue = new ArrayList<>();
+    private final Queue<Runnable> syncTaskQueue = new ConcurrentLinkedQueue<>();
 
     /**
      * This Map tracks how many bugs have occurred in a given Location .
@@ -78,7 +84,7 @@ public class TickerTask implements Runnable {
     /**
      * This Map tracks, per chunk, which Locations are currently asleep and the
      * TickerTask cycle at which they should wake back up. Sleeping locations are
-     * skipped entirely in {@link #tickLocation(Set, Location)} - no BlockStorage
+     * skipped entirely in {@link #tickLocation(ChunkPosition, Set, Location)} - no BlockStorage
      * lookup, no profiler entry, no BlockTicker#update() call.
      *
      * The inner Long2LongMap is written from the async ticking thread (this class,
@@ -157,8 +163,16 @@ public class TickerTask implements Runnable {
             // Drain any synchronized-ticker work queued this cycle in a single batched
             // Slimefun.runSync(...) call, instead of one Bukkit task per synchronized machine.
             if (!syncTaskQueue.isEmpty()) {
-                List<Runnable> batch = new ArrayList<>(syncTaskQueue);
-                syncTaskQueue.clear();
+                /*
+                 * Snapshot by draining with poll() rather than copy-then-clear: clear() would
+                 * also discard anything another thread appended between the copy and the clear.
+                 */
+                List<Runnable> batch = new ArrayList<>();
+                Runnable queued;
+
+                while ((queued = syncTaskQueue.poll()) != null) {
+                    batch.add(queued);
+                }
 
                 Slimefun.runSync(() -> {
                     for (Runnable task : batch) {
@@ -198,7 +212,9 @@ public class TickerTask implements Runnable {
             // Only continue if the Chunk is actually loaded
             if (chunk.isLoaded()) {
                 for (Location l : locations) {
-                    tickLocation(tickers, l);
+                    // The ChunkPosition is threaded down instead of being recomputed per
+                    // Location, so the sleep check adds no allocation to the hot path.
+                    tickLocation(chunk, tickers, l);
                 }
             }
         } catch (ArrayIndexOutOfBoundsException | NumberFormatException x) {
@@ -206,8 +222,9 @@ public class TickerTask implements Runnable {
         }
     }
 
-    private void tickLocation(@Nonnull Set<BlockTicker> tickers, @Nonnull Location l) {
-        if (isAsleep(l)) {
+    @ParametersAreNonnullByDefault
+    private void tickLocation(ChunkPosition chunk, Set<BlockTicker> tickers, Location l) {
+        if (isAsleep(chunk, l)) {
             return;
         }
 
@@ -295,10 +312,12 @@ public class TickerTask implements Runnable {
     /**
      * This queues a {@link Runnable} to run on the main server thread during this
      * cycle's single batched sync-task drain, instead of scheduling an individual
-     * {@link org.bukkit.scheduler.BukkitTask}. Safe to call from the async ticking
-     * thread only (i.e. from within a {@link BlockTicker#tick(Block, SlimefunItem, Config)}
-     * call, or anything else invoked synchronously from within this class's own
-     * async {@link #run()}).
+     * {@link org.bukkit.scheduler.BukkitTask}.
+     *
+     * This is safe to call from any thread. Tasks queued from the async ticking thread
+     * (i.e. from within a {@link BlockTicker#tick(Block, SlimefunItem, Config)} call) run
+     * during the current cycle's drain; tasks queued from elsewhere run during whichever
+     * drain happens next.
      *
      * @param task
      *            The {@link Runnable} to run on the main thread this cycle
@@ -316,8 +335,14 @@ public class TickerTask implements Runnable {
      * {@link Slimefun#runSync(Runnable)}).
      */
     void drainSyncTaskQueueForTesting() {
-        List<Runnable> batch = new ArrayList<>(syncTaskQueue);
-        syncTaskQueue.clear();
+        // Drained into a snapshot first, exactly like run() does, so that anything a task
+        // queues while running lands in the next batch rather than this one.
+        List<Runnable> batch = new ArrayList<>();
+        Runnable queued;
+
+        while ((queued = syncTaskQueue.poll()) != null) {
+            batch.add(queued);
+        }
 
         for (Runnable task : batch) {
             try {
@@ -484,6 +509,27 @@ public class TickerTask implements Runnable {
                 tickingLocations.remove(chunk);
             }
         }
+
+        /*
+         * Sleep state must be cleared too, otherwise:
+         *
+         * 1. A machine broken while asleep leaves its entry behind forever - isAsleep(l)
+         *    is the only thing that lazily expires entries, and it is never called again
+         *    for a Location that is no longer ticking. That leaks for the lifetime of the
+         *    server, proportional to the number of machines destroyed while idle.
+         * 2. Placing a NEW machine at the same coordinates within the old sleep window
+         *    would make tickLocation skip the brand new machine for the remainder of the
+         *    previous machine's sleep duration.
+         */
+        Long2LongMap wakeTimes = sleepingLocations.get(chunk);
+
+        if (wakeTimes != null) {
+            wakeTimes.remove(FastBlockPos.pack(l.getBlockX(), l.getBlockY(), l.getBlockZ()));
+
+            if (wakeTimes.isEmpty()) {
+                sleepingLocations.remove(chunk);
+            }
+        }
     }
 
     /**
@@ -542,7 +588,39 @@ public class TickerTask implements Runnable {
     public boolean isAsleep(Location l) {
         Validate.notNull(l, "Location cannot be null!");
 
-        ChunkPosition chunk = new ChunkPosition(l.getWorld(), l.getBlockX() >> 4, l.getBlockZ() >> 4);
+        /*
+         * Checked here as well as in the internal overload so that external callers
+         * (BlockTicker's convenience methods, MachineWakeListener, ...) don't allocate a
+         * ChunkPosition either when nothing on the server is asleep.
+         */
+        if (sleepingLocations.isEmpty()) {
+            return false;
+        }
+
+        return isAsleep(new ChunkPosition(l.getWorld(), l.getBlockX() >> 4, l.getBlockZ() >> 4), l);
+    }
+
+    /**
+     * Internal variant of {@link #isAsleep(Location)} for callers that already hold the
+     * {@link ChunkPosition} of the given {@link Location} - most importantly
+     * {@link #tickChunk(ChunkPosition, Set, Set)}, which runs this check once per ticking
+     * {@link Location} per cycle. Recomputing the {@link ChunkPosition} there would put an
+     * allocation right back into the hot path this whole feature exists to keep clean.
+     *
+     * @param chunk
+     *            The {@link ChunkPosition} the {@link Location} belongs to
+     * @param l
+     *            The {@link Location} to check
+     *
+     * @return Whether the given {@link Location} is currently asleep
+     */
+    @ParametersAreNonnullByDefault
+    private boolean isAsleep(ChunkPosition chunk, Location l) {
+        // Nothing is asleep anywhere - the overwhelmingly common case, and free to check
+        if (sleepingLocations.isEmpty()) {
+            return false;
+        }
+
         Long2LongMap wakeTimes = sleepingLocations.get(chunk);
 
         if (wakeTimes == null) {

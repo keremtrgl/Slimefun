@@ -168,7 +168,7 @@ public class CargoNet extends AbstractItemNetwork implements HologramOwner {
 
             // Note: there is no explicit isAsleep() check here. When CargoNetworkTask#run()
             // puts this regulator's Location to sleep (see IDLE_SLEEP_CYCLES below), that
-            // exact Location is also what TickerTask#tickLocation(Set, Location) gates on -
+            // exact Location is also what TickerTask#tickLocation(ChunkPosition, Set, Location) gates on -
             // so once asleep, this entire tick(Block) method (including super.tick() and the
             // hologram update above) is skipped by TickerTask before it's ever called, not
             // just the block below. A guard here would be dead code. The sleep is bounded to

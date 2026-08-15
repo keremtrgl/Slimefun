@@ -146,4 +146,51 @@ class TestTickerTaskSleep {
         Assertions.assertFalse(ticker.triggerIsSleeping(block));
         Assertions.assertFalse(Slimefun.getTickerTask().isAsleep(block.getLocation()));
     }
+
+    @Test
+    @DisplayName("Test disableTicker clears any sleep state for that Location")
+    void testDisableTickerClearsSleepState() {
+        Location l = worldA.getBlockAt(11, 65, 11).getLocation();
+
+        Slimefun.getTickerTask().enableTicker(l);
+        Slimefun.getTickerTask().sleepLocation(l, 1000);
+        Assertions.assertTrue(Slimefun.getTickerTask().isAsleep(l));
+
+        // Breaking a machine while it is asleep must not leave its sleep entry behind -
+        // isAsleep(l) is the only thing that lazily expires entries, and it never runs
+        // again for a Location that is no longer ticking.
+        Slimefun.getTickerTask().disableTicker(l);
+
+        Assertions.assertFalse(Slimefun.getTickerTask().isAsleep(l), "disableTicker must clear the sleep entry, otherwise it leaks for the lifetime of the server");
+    }
+
+    @Test
+    @DisplayName("Test a new machine placed at a sleeping machine's coordinates is not stale-skipped")
+    void testReplacedMachineIsNotStaleSkipped() {
+        Location l = worldA.getBlockAt(12, 65, 12).getLocation();
+
+        // A machine goes to sleep for a long time...
+        Slimefun.getTickerTask().enableTicker(l);
+        Slimefun.getTickerTask().sleepLocation(l, 1000);
+        Assertions.assertTrue(Slimefun.getTickerTask().isAsleep(l));
+
+        // ...gets broken...
+        Slimefun.getTickerTask().disableTicker(l);
+
+        // ...and a brand new one is placed at the exact same coordinates.
+        Slimefun.getTickerTask().enableTicker(l);
+
+        Assertions.assertFalse(Slimefun.getTickerTask().isAsleep(l), "A newly placed machine must not inherit the sleep state of the machine that used to occupy those coordinates");
+    }
+
+    @Test
+    @DisplayName("Test disableTicker on a Location that was never asleep is harmless")
+    void testDisableTickerWithoutSleepState() {
+        Location l = worldA.getBlockAt(13, 65, 13).getLocation();
+
+        Slimefun.getTickerTask().enableTicker(l);
+
+        Assertions.assertDoesNotThrow(() -> Slimefun.getTickerTask().disableTicker(l));
+        Assertions.assertFalse(Slimefun.getTickerTask().isAsleep(l));
+    }
 }

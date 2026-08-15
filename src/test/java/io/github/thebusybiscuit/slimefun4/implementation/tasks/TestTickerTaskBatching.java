@@ -1,5 +1,7 @@
 package io.github.thebusybiscuit.slimefun4.implementation.tasks;
 
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.AfterAll;
@@ -94,5 +96,51 @@ class TestTickerTaskBatching {
         ticker.run();
 
         Assertions.assertEquals(2, counter.get());
+    }
+
+    @Test
+    @DisplayName("Test concurrent producers never lose or corrupt queued sync tasks")
+    void testConcurrentQueueingIsSafe() throws InterruptedException {
+        int threads = 8;
+        int tasksPerThread = 500;
+
+        AtomicInteger counter = new AtomicInteger(0);
+        TickerTask ticker = Slimefun.getTickerTask();
+
+        CountDownLatch startGate = new CountDownLatch(1);
+        CountDownLatch finished = new CountDownLatch(threads);
+        AtomicInteger failures = new AtomicInteger(0);
+
+        for (int i = 0; i < threads; i++) {
+            Thread producer = new Thread(() -> {
+                try {
+                    startGate.await();
+
+                    for (int j = 0; j < tasksPerThread; j++) {
+                        ticker.queueSyncTask(counter::incrementAndGet);
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    failures.incrementAndGet();
+                } catch (RuntimeException e) {
+                    // e.g. the ArrayIndexOutOfBoundsException a plain ArrayList throws
+                    // when several threads grow it at once
+                    failures.incrementAndGet();
+                } finally {
+                    finished.countDown();
+                }
+            });
+
+            producer.setDaemon(true);
+            producer.start();
+        }
+
+        startGate.countDown();
+        Assertions.assertTrue(finished.await(30, TimeUnit.SECONDS), "Producer threads did not finish in time");
+        Assertions.assertEquals(0, failures.get(), "queueSyncTask threw when called concurrently - it is public API and must be safe from any thread");
+
+        ticker.drainSyncTaskQueueForTesting();
+
+        Assertions.assertEquals(threads * tasksPerThread, counter.get(), "Sync tasks were lost when queued concurrently - the queue is not thread-safe");
     }
 }
