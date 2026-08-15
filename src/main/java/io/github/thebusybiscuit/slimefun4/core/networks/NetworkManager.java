@@ -223,7 +223,14 @@ public class NetworkManager {
     public void unregisterNetwork(@Nonnull Network network) {
         Validate.notNull(network, "Cannot unregister a null Network");
         networks.remove(network);
-        networksByRegulator.remove(network.getRegulator());
+
+        /*
+         * The two-arg conditional remove matters here: updateAllNetworks -> markDirty ->
+         * unregisterNetwork runs on the main thread, while registerNetwork runs on the async
+         * ticker thread. An unconditional remove landing after an async re-register at the
+         * same regulator Location would evict the live Network's index entry.
+         */
+        networksByRegulator.remove(network.getRegulator(), network);
     }
 
     /**

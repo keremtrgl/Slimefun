@@ -22,12 +22,10 @@ import me.mrCookieSlime.Slimefun.api.BlockStorage;
  * it owns receives or loses items via a hopper/dropper/dispenser.
  *
  * Cargo delivery does not go through this listener - {@link io.github.thebusybiscuit.slimefun4.core.networks.cargo.CargoNet}
- * wakes its own regulator, and CargoUtils wakes the
- * destination block on a successful delivery, both by calling
+ * wakes its own regulator, and CargoUtils wakes the destination block on a
+ * successful delivery, both by calling
  * {@link io.github.thebusybiscuit.slimefun4.implementation.tasks.TickerTask#wakeLocation(Location)}
  * directly - firing a Bukkit event per item transfer would itself be wasteful.
- *
- * @author TheBusyBiscuit
  */
 public class MachineWakeListener implements Listener {
 

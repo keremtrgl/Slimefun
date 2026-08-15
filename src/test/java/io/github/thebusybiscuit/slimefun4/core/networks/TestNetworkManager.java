@@ -175,6 +175,29 @@ class TestNetworkManager {
     }
 
     @Test
+    @DisplayName("Test unregistering a stale network does not evict a newer one at the same regulator")
+    void testStaleUnregisterKeepsNewerIndexEntry() {
+        NetworkManager manager = new NetworkManager(10);
+        World world = server.addSimpleWorld("Stale Unregister World");
+        Location loc = new Location(world, 0, 100, 0);
+
+        // updateAllNetworks -> markDirty -> unregisterNetwork runs on the main thread while
+        // registerNetwork runs on the async ticker thread, so a stale unregister can land
+        // after a fresh Network has already claimed the same regulator Location.
+        Network stale = new MockNetwork(manager, loc, 10, new HashMap<>());
+        Network fresh = new MockNetwork(manager, loc, 10, new HashMap<>());
+
+        manager.registerNetwork(stale);
+        manager.registerNetwork(fresh);
+
+        manager.unregisterNetwork(stale);
+
+        Optional<MockNetwork> indexed = manager.getNetworkAtRegulator(loc, MockNetwork.class);
+        Assertions.assertTrue(indexed.isPresent(), "The live Network's index entry must survive a stale unregister");
+        Assertions.assertSame(fresh, indexed.get());
+    }
+
+    @Test
     @DisplayName("Test empty network list for null locations")
     void testNullLocations() {
         NetworkManager manager = new NetworkManager(10, false, false);
