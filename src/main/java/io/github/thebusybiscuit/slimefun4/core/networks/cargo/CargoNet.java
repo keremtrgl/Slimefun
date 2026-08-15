@@ -56,15 +56,33 @@ public class CargoNet extends AbstractItemNetwork implements HologramOwner {
     }
 
     public static @Nonnull CargoNet getNetworkFromLocationOrCreate(@Nonnull Location l) {
+        // Fast path: this Location is the creating regulator of an existing Network.
+        // That is the steady-state case (a Cargo Manager resolving its own Network on
+        // every single tick), so it must stay O(1).
         Optional<CargoNet> cargoNetwork = Slimefun.getNetworkManager().getNetworkAtRegulator(l, CargoNet.class);
 
         if (cargoNetwork.isPresent()) {
             return cargoNetwork.get();
-        } else {
-            CargoNet network = new CargoNet(l);
-            Slimefun.getNetworkManager().registerNetwork(network);
-            return network;
         }
+
+        /*
+         * Miss: this Location is either brand new, or a SECOND Cargo Manager that sits
+         * inside an already existing Network. Only the linear scan can tell those two
+         * apart, because it matches against every node of a Network (Network#connectsTo)
+         * rather than just its creating regulator. The "Multiple Cargo Managers
+         * connected" guard in tick(Block) depends entirely on this returning the already
+         * existing Network here - otherwise both managers would run their own independent
+         * Network over the same nodes, duplicating routing and round-robin state.
+         */
+        cargoNetwork = Slimefun.getNetworkManager().getNetworkFromLocation(l, CargoNet.class);
+
+        if (cargoNetwork.isPresent()) {
+            return cargoNetwork.get();
+        }
+
+        CargoNet network = new CargoNet(l);
+        Slimefun.getNetworkManager().registerNetwork(network);
+        return network;
     }
 
     /**

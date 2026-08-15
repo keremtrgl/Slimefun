@@ -334,14 +334,32 @@ public class EnergyNet extends Network implements HologramOwner {
      */
     @Nonnull
     public static EnergyNet getNetworkFromLocationOrCreate(@Nonnull Location l) {
+        // Fast path: this Location is the creating regulator of an existing Network.
+        // That is the steady-state case (a regulator resolving its own Network on
+        // every single tick), so it must stay O(1).
         Optional<EnergyNet> energyNetwork = Slimefun.getNetworkManager().getNetworkAtRegulator(l, EnergyNet.class);
 
         if (energyNetwork.isPresent()) {
             return energyNetwork.get();
-        } else {
-            EnergyNet network = new EnergyNet(l);
-            Slimefun.getNetworkManager().registerNetwork(network);
-            return network;
         }
+
+        /*
+         * Miss: this Location is either brand new, or a SECOND regulator that sits
+         * inside an already existing Network. Only the linear scan can tell those two
+         * apart, because it matches against every node of a Network (Network#connectsTo)
+         * rather than just its creating regulator. The "Multiple Energy Regulators
+         * connected" guard in tick(Block) depends entirely on this returning the
+         * already existing Network here - otherwise both regulators would run their own
+         * independent Network over the same blocks and duplicate all generator output.
+         */
+        energyNetwork = Slimefun.getNetworkManager().getNetworkFromLocation(l, EnergyNet.class);
+
+        if (energyNetwork.isPresent()) {
+            return energyNetwork.get();
+        }
+
+        EnergyNet network = new EnergyNet(l);
+        Slimefun.getNetworkManager().registerNetwork(network);
+        return network;
     }
 }
