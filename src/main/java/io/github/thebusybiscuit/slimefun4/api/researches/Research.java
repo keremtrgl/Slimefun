@@ -1,6 +1,7 @@
 package io.github.thebusybiscuit.slimefun4.api.researches;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
@@ -195,7 +196,15 @@ public class Research implements Keyed {
      */
     @Nonnull
     public List<SlimefunItem> getAffectedItems() {
-        return items;
+        return Collections.unmodifiableList(items);
+    }
+
+    public void addAffectedItem(@Nonnull SlimefunItem item) {
+        items.add(item);
+    }
+
+    public void removeAffectedItem(@Nonnull SlimefunItem item) {
+        items.remove(item);
     }
 
     /**

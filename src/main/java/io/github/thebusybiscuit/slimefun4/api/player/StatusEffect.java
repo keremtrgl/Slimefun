@@ -67,7 +67,8 @@ public class StatusEffect implements Keyed {
      *            The {@link TimeUnit} for the given duration
      */
     public void add(@Nonnull Player p, int level, int duration, @Nonnull TimeUnit unit) {
-        PersistentDataAPI.setString(p, getKey(), level + ";" + System.currentTimeMillis() + unit.toMillis(duration));
+        long expiresAt = System.currentTimeMillis() + unit.toMillis(duration);
+        PersistentDataAPI.setString(p, getKey(), level + ";" + expiresAt);
     }
 
     /**

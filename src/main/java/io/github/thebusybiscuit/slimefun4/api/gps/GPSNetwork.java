@@ -1,5 +1,6 @@
 package io.github.thebusybiscuit.slimefun4.api.gps;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Locale;
@@ -351,7 +352,7 @@ public class GPSNetwork {
      */
     @Nonnull
     public Set<Location> getTransmitters(@Nonnull UUID uuid) {
-        return transmitters.getOrDefault(uuid, new HashSet<>());
+        return Collections.unmodifiableSet(transmitters.getOrDefault(uuid, new HashSet<>()));
     }
 
     /**

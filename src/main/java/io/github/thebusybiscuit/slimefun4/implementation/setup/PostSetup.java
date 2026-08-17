@@ -2,6 +2,7 @@ package io.github.thebusybiscuit.slimefun4.implementation.setup;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -44,7 +45,14 @@ public final class PostSetup {
     public static void setupWiki() {
         Slimefun.logger().log(Level.INFO, "Loading Wiki pages...");
 
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(Slimefun.class.getResourceAsStream("/wiki.json"), StandardCharsets.UTF_8))) {
+        InputStream inputStream = Slimefun.class.getResourceAsStream("/wiki.json");
+
+        if (inputStream == null) {
+            Slimefun.logger().log(Level.SEVERE, "Failed to load wiki.json file (resource not found)");
+            return;
+        }
+
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
             JsonElement element = JsonUtils.parseString(reader.lines().collect(Collectors.joining("")));
             JsonObject json = element.getAsJsonObject();
 

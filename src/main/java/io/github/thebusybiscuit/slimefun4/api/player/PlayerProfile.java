@@ -487,9 +487,13 @@ public class PlayerProfile {
             if (line.startsWith(ChatColors.color("&7ID: ")) && line.indexOf('#') != -1) {
                 String[] splitLine = CommonPatterns.HASH.split(line);
 
-                if (CommonPatterns.NUMERIC.matcher(splitLine[1]).matches()) {
-                    id = OptionalInt.of(Integer.parseInt(splitLine[1]));
-                    uuid = splitLine[0].replace(ChatColors.color("&7ID: "), "");
+                if (splitLine.length > 1 && CommonPatterns.NUMERIC.matcher(splitLine[1]).matches()) {
+                    try {
+                        id = OptionalInt.of(Integer.parseInt(splitLine[1]));
+                        uuid = splitLine[0].replace(ChatColors.color("&7ID: "), "");
+                    } catch (NumberFormatException x) {
+                        continue;
+                    }
                 }
             }
         }

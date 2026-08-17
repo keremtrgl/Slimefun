@@ -108,21 +108,23 @@ public class AsyncRecipeChoiceTask implements Runnable {
 
     @Override
     public void run() {
-        // Terminate the task when noone is viewing the Inventory
-        if (inventory.getViewers().isEmpty()) {
-            Bukkit.getScheduler().cancelTask(id);
-            return;
-        }
-
-        lock.readLock().lock();
-
-        try {
-            for (Map.Entry<Integer, LoopIterator<Material>> entry : iterators.entrySet()) {
-                inventory.setItem(entry.getKey(), new ItemStack(entry.getValue().next()));
+        Slimefun.runSync(() -> {
+            // Terminate the task when noone is viewing the Inventory
+            if (inventory.getViewers().isEmpty()) {
+                Bukkit.getScheduler().cancelTask(id);
+                return;
             }
-        } finally {
-            lock.readLock().unlock();
-        }
+
+            lock.readLock().lock();
+
+            try {
+                for (Map.Entry<Integer, LoopIterator<Material>> entry : iterators.entrySet()) {
+                    inventory.setItem(entry.getKey(), new ItemStack(entry.getValue().next()));
+                }
+            } finally {
+                lock.readLock().unlock();
+            }
+        });
     }
 
 }

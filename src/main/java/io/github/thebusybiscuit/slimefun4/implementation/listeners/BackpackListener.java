@@ -167,11 +167,10 @@ public class BackpackListener implements Listener {
 
         // Check if someone else is currently viewing this backpack
         if (!backpacks.containsValue(item)) {
-            SoundEffect.BACKPACK_OPEN_SOUND.playAt(p.getLocation(), SoundCategory.PLAYERS);
-            backpacks.put(p.getUniqueId(), item);
-
             PlayerProfile.getBackpack(item, backpack -> {
                 if (backpack != null) {
+                    backpacks.put(p.getUniqueId(), item);
+                    SoundEffect.BACKPACK_OPEN_SOUND.playAt(p.getLocation(), SoundCategory.PLAYERS);
                     backpack.open(p);
                 }
             });
