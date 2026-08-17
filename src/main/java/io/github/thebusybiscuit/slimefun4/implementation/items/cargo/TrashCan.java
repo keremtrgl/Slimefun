@@ -11,6 +11,7 @@ import io.github.thebusybiscuit.slimefun4.api.items.ItemGroup;
 import io.github.thebusybiscuit.slimefun4.api.items.SlimefunItem;
 import io.github.thebusybiscuit.slimefun4.api.items.SlimefunItemStack;
 import io.github.thebusybiscuit.slimefun4.api.recipes.RecipeType;
+import io.github.thebusybiscuit.slimefun4.implementation.Slimefun;
 import io.github.thebusybiscuit.slimefun4.utils.ChestMenuUtils;
 
 import me.mrCookieSlime.CSCoreLibPlugin.Configuration.Config;
@@ -61,11 +62,15 @@ public class TrashCan extends SlimefunItem implements InventoryBlock {
 
             @Override
             public void tick(Block b, SlimefunItem item, Config data) {
-                BlockMenu menu = BlockStorage.getInventory(b);
+                Slimefun.runSync(() -> {
+                    BlockMenu menu = BlockStorage.getInventory(b);
 
-                for (int slot : getInputSlots()) {
-                    menu.replaceExistingItem(slot, null);
-                }
+                    if (menu != null) {
+                        for (int slot : getInputSlots()) {
+                            menu.replaceExistingItem(slot, null);
+                        }
+                    }
+                });
             }
 
             @Override

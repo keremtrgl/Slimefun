@@ -246,7 +246,7 @@ public enum Instruction {
     });
 
     private static final Map<String, Instruction> nameLookup = new HashMap<>();
-    public static final Instruction[] valuesCache = values();
+    static final Instruction[] valuesCache = values();
 
     static {
         for (Instruction instruction : valuesCache) {

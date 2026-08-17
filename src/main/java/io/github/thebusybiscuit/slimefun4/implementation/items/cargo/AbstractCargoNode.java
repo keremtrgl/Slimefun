@@ -138,8 +138,12 @@ abstract class AbstractCargoNode extends SimpleSlimefunItem<BlockPlaceHandler> i
             if (frequency == null) {
                 return 0;
             } else {
-                int channel = Integer.parseInt(frequency);
-                return NumberUtils.clamp(0, channel, 16);
+                try {
+                    int channel = Integer.parseInt(frequency);
+                    return NumberUtils.clamp(0, channel, 16);
+                } catch (NumberFormatException x) {
+                    return 0;
+                }
             }
         }
     }

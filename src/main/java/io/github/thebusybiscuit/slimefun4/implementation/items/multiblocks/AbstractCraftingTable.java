@@ -122,14 +122,21 @@ abstract class AbstractCraftingTable extends MultiBlockMachine {
                     String id = line.replace(ChatColors.color("&7ID: "), "");
                     String[] idSplit = CommonPatterns.HASH.split(id);
 
-                    PlayerProfile.fromUUID(UUID.fromString(idSplit[0]), profile -> {
-                        Optional<PlayerBackpack> optional = profile.getBackpack(Integer.parseInt(idSplit[1]));
-                        optional.ifPresent(playerBackpack -> {
-                            // Safety feature for Issue #3664
-                            CompletableFuture<Void> future = playerBackpack.closeForAll();
-                            future.thenRun(() -> playerBackpack.setSize(size));
-                        });
-                    });
+                    if (idSplit.length > 1) {
+                        try {
+                            int backpackId = Integer.parseInt(idSplit[1]);
+
+                            PlayerProfile.fromUUID(UUID.fromString(idSplit[0]), profile -> {
+                                Optional<PlayerBackpack> optional = profile.getBackpack(backpackId);
+                                optional.ifPresent(playerBackpack -> {
+                                    // Safety feature for Issue #3664
+                                    CompletableFuture<Void> future = playerBackpack.closeForAll();
+                                    future.thenRun(() -> playerBackpack.setSize(size));
+                                });
+                            });
+                        } catch (NumberFormatException ignored) {
+                        }
+                    }
 
                     return Optional.of(id);
                 }

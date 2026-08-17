@@ -1,6 +1,7 @@
 package io.github.thebusybiscuit.slimefun4.implementation.items.multiblocks;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -96,7 +97,7 @@ public class TableSaw extends MultiBlockMachine {
 
     @Override
     public List<ItemStack> getDisplayRecipes() {
-        return displayedRecipes;
+        return Collections.unmodifiableList(displayedRecipes);
     }
 
     @Override

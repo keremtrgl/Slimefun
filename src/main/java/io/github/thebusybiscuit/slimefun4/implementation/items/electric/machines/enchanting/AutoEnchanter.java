@@ -122,7 +122,7 @@ public class AutoEnchanter extends AbstractEnchantmentMachine {
          */
         int preExistingEnchants = 0;
         for (Map.Entry<Enchantment, Integer> entry : target.getEnchantments().entrySet()) {
-            if (meta.hasEnchant(entry.getKey())) {
+            if (!enchantments.containsKey(entry.getKey())) {
                 preExistingEnchants++;
             }
         }

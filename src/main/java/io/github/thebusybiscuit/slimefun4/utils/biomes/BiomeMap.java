@@ -2,6 +2,7 @@ package io.github.thebusybiscuit.slimefun4.utils.biomes;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
@@ -166,7 +167,13 @@ public class BiomeMap<T> implements Keyed {
         Validate.notNull(plugin, "The plugin shall not be null.");
         Validate.notNull(path, "The path should not be null!");
 
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(plugin.getClass().getResourceAsStream(path), StandardCharsets.UTF_8))) {
+        InputStream inputStream = plugin.getClass().getResourceAsStream(path);
+
+        if (inputStream == null) {
+            throw new BiomeMapException(key, "Resource '" + path + "' could not be found.");
+        }
+
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
             return fromJson(key, reader.lines().collect(Collectors.joining("")), valueConverter);
         } catch (IOException x) {
             throw new BiomeMapException(key, x);

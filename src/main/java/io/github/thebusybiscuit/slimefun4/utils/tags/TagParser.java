@@ -2,6 +2,7 @@ package io.github.thebusybiscuit.slimefun4.utils.tags;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
@@ -70,8 +71,13 @@ public class TagParser implements Keyed {
 
     void parse(@Nonnull SlimefunTag tag, @Nonnull BiConsumer<Set<Material>, Set<Tag<Material>>> callback) throws TagMisconfigurationException {
         String path = "/tags/" + tag.getKey().getKey() + ".json";
+        InputStream inputStream = Slimefun.class.getResourceAsStream(path);
 
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(Slimefun.class.getResourceAsStream(path), StandardCharsets.UTF_8))) {
+        if (inputStream == null) {
+            throw new TagMisconfigurationException(key, "Resource '" + path + "' could not be found.");
+        }
+
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
             parse(reader.lines().collect(Collectors.joining("")), callback);
         } catch (IOException x) {
             throw new TagMisconfigurationException(key, x);

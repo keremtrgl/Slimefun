@@ -1,6 +1,7 @@
 package io.github.thebusybiscuit.slimefun4.implementation.items.electric.machines;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import javax.annotation.ParametersAreNonnullByDefault;
@@ -110,7 +111,7 @@ public class AutoDrier extends AContainer implements RecipeDisplayItem, NotHoppe
 
     @Override
     public List<ItemStack> getDisplayRecipes() {
-        return recipeList;
+        return Collections.unmodifiableList(recipeList);
     }
 
     @Override

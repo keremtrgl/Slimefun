@@ -114,7 +114,7 @@ public class Talisman extends SlimefunItem {
 
     @Nonnull
     public PotionEffect[] getEffects() {
-        return effects;
+        return effects.clone();
     }
 
     protected boolean isEventCancelled() {

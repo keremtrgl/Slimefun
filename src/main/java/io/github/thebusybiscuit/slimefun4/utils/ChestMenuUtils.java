@@ -190,7 +190,7 @@ public final class ChestMenuUtils {
     }
 
     private static short getDurability(@Nonnull ItemStack item, int timeLeft, int max) {
-        return (short) ((item.getType().getMaxDurability() / max) * timeLeft);
+        return (short) ((item.getType().getMaxDurability() * (long) timeLeft) / max);
     }
 
 }

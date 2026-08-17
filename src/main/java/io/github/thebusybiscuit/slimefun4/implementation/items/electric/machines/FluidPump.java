@@ -147,7 +147,7 @@ public class FluidPump extends SimpleSlimefunItem<BlockTicker> implements Invent
                     }
 
                     return;
-                } else if (SlimefunUtils.isItemSimilar(itemInSlot, emptyBottle, true, false)) {
+                } else if (SlimefunUtils.isItemSimilar(itemInSlot, emptyBottle, true, false) && isBottleable(fluid)) {
                     ItemStack bottle = getFilledBottle(fluid);
 
                     if (!menu.fits(bottle, getOutputSlots())) {
@@ -196,6 +196,10 @@ public class FluidPump extends SimpleSlimefunItem<BlockTicker> implements Invent
         }
 
         return null;
+    }
+
+    private boolean isBottleable(@Nonnull Block fluid) {
+        return fluid.getType() == Material.WATER || fluid.getType() == Material.BUBBLE_COLUMN;
     }
 
     private @Nonnull ItemStack getFilledBottle(@Nonnull Block fluid) {

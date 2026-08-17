@@ -53,9 +53,14 @@ public abstract class AbstractMonsterSpawner extends SlimefunItem {
         Validate.notNull(item, "The Item cannot be null");
 
         ItemMeta meta = item.getItemMeta();
+        List<String> lore = meta.getLore();
+
+        if (lore == null) {
+            return Optional.empty();
+        }
 
         // We may want to update this in the future to also make use of the BlockStateMeta
-        for (String line : meta.getLore()) {
+        for (String line : lore) {
             if (ChatColor.stripColor(line).startsWith("Type: ") && !line.contains("<Type>")) {
                 EntityType type = EntityType.valueOf(ChatColor.stripColor(line).replace("Type: ", "").replace(' ', '_').toUpperCase(Locale.ROOT));
                 return Optional.of(type);

@@ -190,7 +190,8 @@ public final class Script {
     public float getRating() {
         int positive = getUpvotes() + 1;
         int negative = getDownvotes();
-        return Math.round((positive / (float) (positive + negative)) * 100.0F) / 100.0F;
+        float percentage = (positive / (float) (positive + negative)) * 100.0F;
+        return Math.round(percentage * 100.0F) / 100.0F;
     }
 
     /**
@@ -233,7 +234,13 @@ public final class Script {
             directory.mkdirs();
         }
 
-        for (File file : directory.listFiles()) {
+        File[] files = directory.listFiles();
+
+        if (files == null) {
+            return;
+        }
+
+        for (File file : files) {
             if (file.getName().endsWith(".sfs")) {
                 try {
                     Config config = new Config(file);

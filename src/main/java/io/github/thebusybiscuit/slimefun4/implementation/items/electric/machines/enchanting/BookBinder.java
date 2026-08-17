@@ -81,7 +81,7 @@ public class BookBinder extends AContainer {
 
                     book.setItemMeta(enchantMeta);
 
-                    MachineRecipe recipe = new MachineRecipe(25 * (enchantments.size() / this.getSpeed()), new ItemStack[] { target, item }, new ItemStack[] { book });
+                    MachineRecipe recipe = new MachineRecipe(25 * enchantments.size() / this.getSpeed(), new ItemStack[] { target, item }, new ItemStack[] { book });
 
                     if (!InvUtils.fitAll(menu.toInventory(), recipe.getOutput(), getOutputSlots())) {
                         return null;
@@ -134,9 +134,10 @@ public class BookBinder extends AContainer {
     private Map<Enchantment, Integer> combineEnchantments(Map<Enchantment, Integer> ech1, Map<Enchantment, Integer> ech2) {
         Map<Enchantment, Integer> enchantments = new HashMap<>();
         enchantments.putAll(ech1);
-        boolean hasConflicts = false;
 
         for (Map.Entry<Enchantment, Integer> entry : ech2.entrySet()) {
+            boolean hasConflicts = false;
+
             for (Map.Entry<Enchantment, Integer> conflictsWith : enchantments.entrySet()) {
 
                 /*
