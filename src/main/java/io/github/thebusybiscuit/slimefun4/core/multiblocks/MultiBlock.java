@@ -1,6 +1,7 @@
 package io.github.thebusybiscuit.slimefun4.core.multiblocks;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
@@ -46,7 +47,7 @@ public class MultiBlock {
 
     @Nonnull
     public static Set<Tag<Material>> getSupportedTags() {
-        return SUPPORTED_TAGS;
+        return Collections.unmodifiableSet(SUPPORTED_TAGS);
     }
 
     private final SlimefunItem item;
@@ -82,7 +83,7 @@ public class MultiBlock {
 
     @Nonnull
     public Material[] getStructure() {
-        return blocks;
+        return blocks.clone();
     }
 
     @Nonnull

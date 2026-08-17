@@ -80,12 +80,12 @@ public class SlimefunItem implements Placeable {
      * This is a reference to the {@link SlimefunAddon} that registered this
      * {@link SlimefunItem}, if the item has not been registered yet, it will be null.
      */
-    protected SlimefunAddon addon;
+    protected volatile SlimefunAddon addon;
 
     /**
      * This is the state of this {@link SlimefunItem}.
      */
-    private ItemState state = ItemState.UNREGISTERED;
+    private volatile ItemState state = ItemState.UNREGISTERED;
 
     /**
      * This is the {@link ItemGroup} in which this {@link SlimefunItem} can be found.
@@ -111,8 +111,8 @@ public class SlimefunItem implements Placeable {
     private final OptionalMap<Class<? extends ItemHandler>, ItemHandler> itemHandlers = new OptionalMap<>(HashMap::new);
     private final Set<ItemSetting<?>> itemSettings = new HashSet<>();
 
-    private boolean ticking = false;
-    private BlockTicker blockTicker;
+    private volatile boolean ticking = false;
+    private volatile BlockTicker blockTicker;
 
     /**
      * This creates a new {@link SlimefunItem} from the given arguments.
@@ -370,7 +370,9 @@ public class SlimefunItem implements Placeable {
      */
     public boolean isDisabled() {
         if (state == ItemState.UNREGISTERED) {
-            error("isDisabled() cannot be called before registering the item", new UnregisteredItemException(this));
+            // Cannot use error(...) here - it requires a non-null addon, which an
+            // unregistered item never has.
+            Slimefun.logger().log(Level.WARNING, "isDisabled() cannot be called before registering the item", new UnregisteredItemException(this));
             return false;
         }
 
@@ -389,7 +391,7 @@ public class SlimefunItem implements Placeable {
      */
     public boolean isDisabledIn(@Nonnull World world) {
         if (state == ItemState.UNREGISTERED) {
-            error("isDisabled(World) cannot be called before registering the item", new UnregisteredItemException(this));
+            Slimefun.logger().log(Level.WARNING, "isDisabled(World) cannot be called before registering the item", new UnregisteredItemException(this));
             return false;
         }
 
@@ -462,6 +464,14 @@ public class SlimefunItem implements Placeable {
 
             if (ticking && !Slimefun.getCfg().getBoolean("URID.enable-tickers")) {
                 state = ItemState.DISABLED;
+
+                for (ItemHandler handler : this.itemHandlers.values()) {
+                    if (handler instanceof BlockTicker) {
+                        Slimefun.getRegistry().getTickerBlocks().remove(getId());
+                    }
+                }
+                this.itemHandlers.clear();
+
                 return;
             }
 
@@ -649,11 +659,11 @@ public class SlimefunItem implements Placeable {
      */
     public void setResearch(@Nullable Research research) {
         if (this.research != null) {
-            this.research.getAffectedItems().remove(this);
+            this.research.removeAffectedItem(this);
         }
 
         if (research != null) {
-            research.getAffectedItems().add(this);
+            research.addAffectedItem(this);
         }
 
         this.research = research;

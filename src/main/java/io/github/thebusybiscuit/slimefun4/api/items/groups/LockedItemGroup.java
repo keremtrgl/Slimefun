@@ -155,6 +155,12 @@ public class LockedItemGroup extends ItemGroup {
         Validate.notNull(profile, "The Profile cannot be null!");
 
         for (ItemGroup parent : parents) {
+            if (parent instanceof FlexItemGroup) {
+                // FlexItemGroup (and subtypes like NestedItemGroup) don't hold items of their
+                // own - getItems() is unsupported for them, so there's nothing to check here.
+                continue;
+            }
+
             for (SlimefunItem item : parent.getItems()) {
                 // Check if the Player has researched every item (if the item is enabled)
                 if (!item.isDisabledIn(p.getWorld()) && item.hasResearch() && !profile.hasUnlocked(item.getResearch())) {

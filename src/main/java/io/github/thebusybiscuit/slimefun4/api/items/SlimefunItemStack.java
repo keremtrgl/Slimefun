@@ -304,7 +304,9 @@ public class SlimefunItemStack {
 
     @Override
     public @Nonnull SlimefunItemStack clone() {
-        return new SlimefunItemStack(id, delegate.clone());
+        SlimefunItemStack copy = new SlimefunItemStack(id, delegate.clone());
+        copy.texture = this.texture;
+        return copy;
     }
 
     @Override

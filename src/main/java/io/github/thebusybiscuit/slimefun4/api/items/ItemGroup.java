@@ -80,7 +80,7 @@ public class ItemGroup implements Keyed {
         Validate.notNull(key, "An item group's NamespacedKey must not be null!");
         Validate.notNull(item, "An item group's ItemStack must not be null!");
 
-        this.item = item;
+        this.item = item.clone();
         this.key = key;
 
         ItemMeta meta = item.getItemMeta();

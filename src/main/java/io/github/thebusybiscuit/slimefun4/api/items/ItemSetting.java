@@ -176,6 +176,8 @@ public class ItemSetting<T> {
             if (validateInput(newValue)) {
                 this.value = newValue;
             } else {
+                this.value = defaultValue;
+
                 // @formatter:off
                 item.warn(
                         "We have found an invalid config setting in your Items.yml!" +
