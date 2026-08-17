@@ -36,7 +36,12 @@ public class NetworkListener implements Listener {
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
     }
 
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    /*
+     * This must run before BlockListener's HIGHEST-priority break handler clears the
+     * block's BlockStorage entry (fixes updateAllNetworks() silently no-oping on every
+     * real block break, since it gates on BlockStorage.hasBlockInfo(l)).
+     */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent e) {
         manager.updateAllNetworks(e.getBlock().getLocation());
     }

@@ -1,11 +1,10 @@
 package io.github.thebusybiscuit.slimefun4.core.networks.energy;
 
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.LongConsumer;
 
@@ -47,9 +46,12 @@ public class EnergyNet extends Network implements HologramOwner {
 
     private static final int RANGE = 6;
 
-    private final Map<Location, EnergyNetProvider> generators = new HashMap<>();
-    private final Map<Location, EnergyNetComponent> capacitors = new HashMap<>();
-    private final Map<Location, EnergyNetComponent> consumers = new HashMap<>();
+    // ConcurrentHashMap: mutated by onClassificationChange/tickAllGenerators on the async
+    // ticker thread, while getGenerators()/getCapacitors()/getConsumers() may be iterated
+    // by external callers (addons, GUIs) on the main thread.
+    private final Map<Location, EnergyNetProvider> generators = new ConcurrentHashMap<>();
+    private final Map<Location, EnergyNetComponent> capacitors = new ConcurrentHashMap<>();
+    private final Map<Location, EnergyNetComponent> consumers = new ConcurrentHashMap<>();
 
     protected EnergyNet(@Nonnull Location l) {
         super(Slimefun.getNetworkManager(), l);
@@ -194,7 +196,12 @@ public class EnergyNet extends Network implements HologramOwner {
     }
 
     private void storeRemainingEnergy(int remainingEnergy) {
-        for (Map.Entry<Location, EnergyNetComponent> entry : capacitors.entrySet()) {
+        remainingEnergy = distributeRemainingEnergy(capacitors, remainingEnergy);
+        distributeRemainingEnergy(generators, remainingEnergy);
+    }
+
+    private int distributeRemainingEnergy(@Nonnull Map<Location, ? extends EnergyNetComponent> components, int remainingEnergy) {
+        for (Map.Entry<Location, ? extends EnergyNetComponent> entry : components.entrySet()) {
             Location loc = entry.getKey();
             EnergyNetComponent component = entry.getValue();
 
@@ -213,23 +220,7 @@ public class EnergyNet extends Network implements HologramOwner {
             }
         }
 
-        for (Map.Entry<Location, EnergyNetProvider> entry : generators.entrySet()) {
-            Location loc = entry.getKey();
-            EnergyNetProvider component = entry.getValue();
-            int capacity = component.getCapacity();
-
-            if (remainingEnergy > 0) {
-                if (remainingEnergy > capacity) {
-                    component.setCharge(loc, capacity);
-                    remainingEnergy -= capacity;
-                } else {
-                    component.setCharge(loc, remainingEnergy);
-                    remainingEnergy = 0;
-                }
-            } else {
-                component.setCharge(loc, 0);
-            }
-        }
+        return remainingEnergy;
     }
 
     private int tickAllGenerators(@Nonnull LongConsumer timings) {
@@ -237,8 +228,13 @@ public class EnergyNet extends Network implements HologramOwner {
         int supply = 0;
 
         for (Map.Entry<Location, EnergyNetProvider> entry : generators.entrySet()) {
-            long timestamp = Slimefun.getProfiler().newEntry();
             Location loc = entry.getKey();
+
+            if (Slimefun.getTickerTask().isAsleep(loc)) {
+                continue;
+            }
+
+            long timestamp = Slimefun.getProfiler().newEntry();
             EnergyNetProvider provider = entry.getValue();
             SlimefunItem item = (SlimefunItem) provider;
 
@@ -334,32 +330,6 @@ public class EnergyNet extends Network implements HologramOwner {
      */
     @Nonnull
     public static EnergyNet getNetworkFromLocationOrCreate(@Nonnull Location l) {
-        // Fast path: this Location is the creating regulator of an existing Network.
-        // That is the steady-state case (a regulator resolving its own Network on
-        // every single tick), so it must stay O(1).
-        Optional<EnergyNet> energyNetwork = Slimefun.getNetworkManager().getNetworkAtRegulator(l, EnergyNet.class);
-
-        if (energyNetwork.isPresent()) {
-            return energyNetwork.get();
-        }
-
-        /*
-         * Miss: this Location is either brand new, or a SECOND regulator that sits
-         * inside an already existing Network. Only the linear scan can tell those two
-         * apart, because it matches against every node of a Network (Network#connectsTo)
-         * rather than just its creating regulator. The "Multiple Energy Regulators
-         * connected" guard in tick(Block) depends entirely on this returning the
-         * already existing Network here - otherwise both regulators would run their own
-         * independent Network over the same blocks and duplicate all generator output.
-         */
-        energyNetwork = Slimefun.getNetworkManager().getNetworkFromLocation(l, EnergyNet.class);
-
-        if (energyNetwork.isPresent()) {
-            return energyNetwork.get();
-        }
-
-        EnergyNet network = new EnergyNet(l);
-        Slimefun.getNetworkManager().registerNetwork(network);
-        return network;
+        return Slimefun.getNetworkManager().getOrCreateNetwork(l, EnergyNet.class, EnergyNet::new);
     }
 }

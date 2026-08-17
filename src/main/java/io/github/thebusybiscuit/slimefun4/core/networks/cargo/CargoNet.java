@@ -5,8 +5,8 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 
 import javax.annotation.Nonnull;
@@ -51,38 +51,18 @@ public class CargoNet extends AbstractItemNetwork implements HologramOwner {
     protected final Map<Location, Integer> roundRobin = new HashMap<>();
     private int tickDelayThreshold = 0;
 
+    /**
+     * Per-node cache for {@link #getFrequency(Location)}, invalidated the same way as
+     * {@link #connectorCache}/{@link #filterCache} via {@link #markCargoNodeConfigurationDirty(Location)}.
+     */
+    private final Map<Location, Integer> frequencyCache = new ConcurrentHashMap<>();
+
     public static @Nullable CargoNet getNetworkFromLocation(@Nonnull Location l) {
         return Slimefun.getNetworkManager().getNetworkFromLocation(l, CargoNet.class).orElse(null);
     }
 
     public static @Nonnull CargoNet getNetworkFromLocationOrCreate(@Nonnull Location l) {
-        // Fast path: this Location is the creating regulator of an existing Network.
-        // That is the steady-state case (a Cargo Manager resolving its own Network on
-        // every single tick), so it must stay O(1).
-        Optional<CargoNet> cargoNetwork = Slimefun.getNetworkManager().getNetworkAtRegulator(l, CargoNet.class);
-
-        if (cargoNetwork.isPresent()) {
-            return cargoNetwork.get();
-        }
-
-        /*
-         * Miss: this Location is either brand new, or a SECOND Cargo Manager that sits
-         * inside an already existing Network. Only the linear scan can tell those two
-         * apart, because it matches against every node of a Network (Network#connectsTo)
-         * rather than just its creating regulator. The "Multiple Cargo Managers
-         * connected" guard in tick(Block) depends entirely on this returning the already
-         * existing Network here - otherwise both managers would run their own independent
-         * Network over the same nodes, duplicating routing and round-robin state.
-         */
-        cargoNetwork = Slimefun.getNetworkManager().getNetworkFromLocation(l, CargoNet.class);
-
-        if (cargoNetwork.isPresent()) {
-            return cargoNetwork.get();
-        }
-
-        CargoNet network = new CargoNet(l);
-        Slimefun.getNetworkManager().registerNetwork(network);
-        return network;
+        return Slimefun.getNetworkManager().getOrCreateNetwork(l, CargoNet.class, CargoNet::new);
     }
 
     /**
@@ -126,6 +106,7 @@ public class CargoNet extends AbstractItemNetwork implements HologramOwner {
     @Override
     public void onClassificationChange(Location l, NetworkComponent from, NetworkComponent to) {
         connectorCache.remove(l);
+        filterCache.remove(l);
 
         if (from == NetworkComponent.TERMINUS) {
             inputNodes.remove(l);
@@ -134,11 +115,14 @@ public class CargoNet extends AbstractItemNetwork implements HologramOwner {
 
         if (to == NetworkComponent.TERMINUS) {
             String id = BlockStorage.checkID(l);
-            switch (id) {
-                case "CARGO_NODE_INPUT" -> inputNodes.add(l);
-                case "CARGO_NODE_OUTPUT",
-                    "CARGO_NODE_OUTPUT_ADVANCED" -> outputNodes.add(l);
-                default -> {}
+
+            if (id != null) {
+                switch (id) {
+                    case "CARGO_NODE_INPUT" -> inputNodes.add(l);
+                    case "CARGO_NODE_OUTPUT",
+                        "CARGO_NODE_OUTPUT_ADVANCED" -> outputNodes.add(l);
+                    default -> {}
+                }
             }
         }
     }
@@ -212,6 +196,13 @@ public class CargoNet extends AbstractItemNetwork implements HologramOwner {
         for (Location node : outputNodes) {
             int frequency = getFrequency(node);
 
+            if (frequency < 0 || frequency >= 16) {
+                // Same range as mapInputNodes() - an out-of-range frequency can never be
+                // matched by any input node, so grouping it here would just leave it
+                // permanently unreachable.
+                continue;
+            }
+
             if (frequency != lastFrequency && lastFrequency != -1) {
                 output.merge(lastFrequency, list, (prev, next) -> {
                     prev.addAll(next);
@@ -245,7 +236,19 @@ public class CargoNet extends AbstractItemNetwork implements HologramOwner {
      * 
      * @return The frequency of the given node
      */
-    private static int getFrequency(@Nonnull Location node) {
+    private int getFrequency(@Nonnull Location node) {
+        Integer cached = frequencyCache.get(node);
+
+        if (cached != null) {
+            return cached;
+        }
+
+        int frequency = parseFrequency(node);
+        frequencyCache.put(node, frequency);
+        return frequency;
+    }
+
+    private static int parseFrequency(@Nonnull Location node) {
         String frequency = BlockStorage.getLocationInfo(node, "frequency");
 
         if (frequency == null) {
@@ -256,5 +259,11 @@ public class CargoNet extends AbstractItemNetwork implements HologramOwner {
         } else {
             return Integer.parseInt(frequency);
         }
+    }
+
+    @Override
+    public void markCargoNodeConfigurationDirty(@Nonnull Location node) {
+        super.markCargoNodeConfigurationDirty(node);
+        frequencyCache.remove(node);
     }
 }

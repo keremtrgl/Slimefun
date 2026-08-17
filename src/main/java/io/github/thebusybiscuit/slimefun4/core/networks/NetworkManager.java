@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.function.Function;
 import java.util.logging.Level;
 
 import javax.annotation.Nonnull;
@@ -200,6 +201,52 @@ public class NetworkManager {
         }
 
         return list;
+    }
+
+    /**
+     * This resolves the {@link Network} of the given type at the given regulator {@link Location},
+     * creating and registering a new one via the given {@code factory} if none exists yet.
+     * This is the shared implementation behind {@code CargoNet#getNetworkFromLocationOrCreate}
+     * and {@code EnergyNet#getNetworkFromLocationOrCreate}.
+     *
+     * @param regulator
+     *            The regulator {@link Location}
+     * @param type
+     *            The {@link Network} subtype to resolve
+     * @param factory
+     *            Constructs a new {@link Network} of that subtype at the given {@link Location}
+     *
+     * @return The existing or newly created {@link Network}
+     */
+    @Nonnull
+    public <T extends Network> T getOrCreateNetwork(@Nonnull Location regulator, @Nonnull Class<T> type, @Nonnull Function<Location, T> factory) {
+        // Fast path: this Location is the creating regulator of an existing Network.
+        // That is the steady-state case (a regulator resolving its own Network on every
+        // single tick), so it must stay O(1).
+        Optional<T> network = getNetworkAtRegulator(regulator, type);
+
+        if (network.isPresent()) {
+            return network.get();
+        }
+
+        /*
+         * Miss: this Location is either brand new, or a SECOND regulator that sits inside
+         * an already existing Network. Only the linear scan can tell those two apart,
+         * because it matches against every node of a Network (Network#connectsTo) rather
+         * than just its creating regulator. Callers that guard against "multiple
+         * regulators connected" depend entirely on this returning the already existing
+         * Network here - otherwise both regulators would run their own independent
+         * Network over the same nodes.
+         */
+        network = getNetworkFromLocation(regulator, type);
+
+        if (network.isPresent()) {
+            return network.get();
+        }
+
+        T created = factory.apply(regulator);
+        registerNetwork(created);
+        return created;
     }
 
     /**

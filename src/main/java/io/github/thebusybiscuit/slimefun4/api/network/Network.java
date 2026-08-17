@@ -1,10 +1,11 @@
 package io.github.thebusybiscuit.slimefun4.api.network;
 
-import java.util.ArrayDeque;
 import java.util.HashSet;
 import java.util.Queue;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -52,9 +53,15 @@ public abstract class Network {
      * The {@link World} should be equal for all positions, therefore we can save memory by simply
      * storing {@link BlockPosition#getAsLong(int, int, int)}.
      */
-    private final Set<Long> positions = new HashSet<>();
+    private final Set<Long> positions = ConcurrentHashMap.newKeySet();
 
-    private final Queue<Location> nodeQueue = new ArrayDeque<>();
+    /*
+     * A ConcurrentLinkedQueue (not a plain ArrayDeque) because markDirty() is called both from
+     * the async ticker thread (Network#discoverStep -> discoverNeighbors -> addLocationToNetwork)
+     * and from the main thread (NetworkListener -> NetworkManager#updateAllNetworks), while
+     * discoverStep() itself polls this same queue from the async ticker thread.
+     */
+    private final Queue<Location> nodeQueue = new ConcurrentLinkedQueue<>();
     protected final Set<Location> regulatorNodes = new HashSet<>();
     protected final Set<Location> connectorNodes = new HashSet<>();
     protected final Set<Location> terminusNodes = new HashSet<>();
@@ -202,6 +209,14 @@ public abstract class Network {
                     return;
                 } else if (currentAssignment == NetworkComponent.TERMINUS) {
                     terminusNodes.remove(l);
+
+                    if (classification == null) {
+                        // This Location is no longer part of the Network at all (as opposed to
+                        // being reclassified to REGULATOR/CONNECTOR/TERMINUS below) - stop
+                        // treating it as connected, otherwise connectsTo(l) would keep
+                        // returning true for it forever.
+                        positions.remove(BlockPosition.getAsLong(l));
+                    }
                 }
 
                 if (classification == NetworkComponent.REGULATOR) {
@@ -214,6 +229,13 @@ public abstract class Network {
                     terminusNodes.add(l);
                 }
 
+                onClassificationChange(l, currentAssignment, classification);
+            } else if (classification == NetworkComponent.TERMINUS) {
+                // The coarse classification hasn't changed, but a TERMINUS node's finer-grained
+                // role can still have changed (e.g. a Cargo input node replaced by an output
+                // node at the same Location, both of which classify as TERMINUS). Subclasses
+                // re-derive their own state from the current block data in here, so it's safe
+                // - and necessary - to re-run this even when nothing coarse changed.
                 onClassificationChange(l, currentAssignment, classification);
             }
 

@@ -10,7 +10,6 @@ import io.github.thebusybiscuit.slimefun4.utils.itemstack.ItemStackWrapper;
 class ItemStackAndInteger {
 
     private ItemStack item;
-    private ItemStackWrapper wrapper;
     private int number;
 
     ItemStackAndInteger(@Nonnull ItemStack item, int amount) {
@@ -26,14 +25,6 @@ class ItemStackAndInteger {
     public @Nonnull ItemStack getItem() {
         initializeItem();
         return item;
-    }
-
-    public @Nonnull ItemStackWrapper getItemStackWrapper() {
-        if (wrapper == null) {
-            wrapper = ItemStackWrapper.wrap(item);
-        }
-
-        return wrapper;
     }
 
     public void add(int amount) {

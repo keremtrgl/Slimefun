@@ -107,6 +107,7 @@ class ItemFilter implements Predicate<ItemStack> {
                          * to send a warning in response to it.
                          */
                         item.warn("Cargo Node was marked as a 'filtering' node but has an insufficient inventory size (" + inventorySize + ")");
+                        this.dirty = false;
                         return;
                     }
 

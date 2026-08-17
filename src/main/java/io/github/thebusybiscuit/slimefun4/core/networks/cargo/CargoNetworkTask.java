@@ -31,6 +31,7 @@ import io.github.thebusybiscuit.slimefun4.utils.itemstack.ItemStackWrapper;
 import me.mrCookieSlime.CSCoreLibPlugin.Configuration.Config;
 import me.mrCookieSlime.Slimefun.api.BlockStorage;
 import me.mrCookieSlime.Slimefun.api.inventory.DirtyChestMenu;
+import me.mrCookieSlime.Slimefun.api.item_transport.ItemTransportFlow;
 
 /**
  * The {@link CargoNetworkTask} is the actual {@link Runnable} responsible for moving {@link ItemStack ItemStacks}
@@ -155,8 +156,15 @@ class CargoNetworkTask implements Runnable {
             if (menu != null) {
                 if (menu.getItemInSlot(previousSlot) == null) {
                     menu.replaceExistingItem(previousSlot, item);
-                } else if (!manager.isItemDeletionEnabled()) {
-                    SlimefunUtils.spawnItem(inputTarget.getLocation().add(0, 1, 0), item, ItemSpawnReason.CARGO_OVERFLOW);
+                } else {
+                    // Try to add the item into another available slot then, same as the
+                    // vanilla-Inventory branch above.
+                    int[] slots = menu.getPreset().getSlotsAccessedByItemTransport(menu, ItemTransportFlow.WITHDRAW, null);
+                    ItemStack rest = menu.pushItem(item, slots);
+
+                    if (rest != null && !manager.isItemDeletionEnabled()) {
+                        SlimefunUtils.spawnItem(inputTarget.getLocation().add(0, 1, 0), rest, ItemSpawnReason.CARGO_OVERFLOW);
+                    }
                 }
             }
         }
