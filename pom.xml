@@ -160,7 +160,7 @@
                         unsupported-but-likely-fine territory. Without this, any test that calls
                         MockBukkit.load(...) fails at @BeforeAll on JDK 25+.
                     -->
-                    <argLine>-Dnet.bytebuddy.experimental=true</argLine>
+                    <argLine>@{argLine} -Dnet.bytebuddy.experimental=true</argLine>
                 </configuration>
             </plugin>
 
