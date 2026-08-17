@@ -69,6 +69,7 @@ public class ProgrammableAndroid extends SlimefunItem implements InventoryBlock,
     private static final int[] OUTPUT_BORDER = { 10, 11, 12, 13, 14, 19, 23, 28, 32, 37, 38, 39, 40, 41 };
     private static final String DEFAULT_SCRIPT = "START-TURN_LEFT-REPEAT";
     private static final int MAX_SCRIPT_LENGTH = 54;
+    private static final int IDLE_SLEEP_TICKS = 30;
 
     protected final List<MachineFuel> fuelTypes = new ArrayList<>();
     protected final String texture;
@@ -683,7 +684,9 @@ public class ProgrammableAndroid extends SlimefunItem implements InventoryBlock,
             float fuel = fuelData == null ? 0 : Float.parseFloat(fuelData);
 
             if (fuel < 0.001) {
-                consumeFuel(b, menu);
+                if (!consumeFuel(b, menu)) {
+                    Slimefun.getTickerTask().sleepLocation(b.getLocation(), IDLE_SLEEP_TICKS);
+                }
             } else {
                 String code = data.getString("script");
                 String[] script = CommonPatterns.DASH.split(code == null ? DEFAULT_SCRIPT : code);
@@ -819,7 +822,10 @@ public class ProgrammableAndroid extends SlimefunItem implements InventoryBlock,
     }
 
     @ParametersAreNonnullByDefault
-    private void consumeFuel(Block b, BlockMenu menu) {
+    /**
+     * @return Whether a matching fuel item was found and consumed.
+     */
+    private boolean consumeFuel(Block b, BlockMenu menu) {
         ItemStack item = menu.getItemInSlot(43);
 
         if (item != null && item.getType() != Material.AIR) {
@@ -833,10 +839,12 @@ public class ProgrammableAndroid extends SlimefunItem implements InventoryBlock,
 
                     int fuelLevel = fuel.getTicks();
                     BlockStorage.addBlockInfo(b, "fuel", String.valueOf(fuelLevel));
-                    break;
+                    return true;
                 }
             }
         }
+
+        return false;
     }
 
     private void constructMenu(@Nonnull BlockMenuPreset preset) {

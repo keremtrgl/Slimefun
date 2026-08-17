@@ -54,6 +54,7 @@ public abstract class AbstractEntityAssembler<T extends Entity> extends SimpleSl
 
     private static final String KEY_ENABLED = "enabled";
     private static final String KEY_OFFSET = "offset";
+    private static final int DISABLED_SLEEP_TICKS = 30;
 
     private final int[] border = { 0, 2, 3, 4, 5, 6, 8, 12, 14, 21, 23, 30, 32, 39, 40, 41 };
     private final int[] inputSlots = { 19, 28, 25, 34 };
@@ -192,6 +193,7 @@ public abstract class AbstractEntityAssembler<T extends Entity> extends SimpleSl
             @Override
             public void tick(Block b, SlimefunItem sf, Config data) {
                 if ("false".equals(BlockStorage.getLocationInfo(b.getLocation(), KEY_ENABLED))) {
+                    Slimefun.getTickerTask().sleepLocation(b.getLocation(), DISABLED_SLEEP_TICKS);
                     return;
                 }
 

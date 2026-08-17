@@ -22,6 +22,7 @@ import io.github.thebusybiscuit.slimefun4.api.recipes.RecipeType;
 import io.github.thebusybiscuit.slimefun4.core.attributes.EnergyNetComponent;
 import io.github.thebusybiscuit.slimefun4.core.handlers.BlockPlaceHandler;
 import io.github.thebusybiscuit.slimefun4.core.networks.energy.EnergyNetComponentType;
+import io.github.thebusybiscuit.slimefun4.implementation.Slimefun;
 import io.github.thebusybiscuit.slimefun4.implementation.SlimefunItems;
 import io.github.thebusybiscuit.slimefun4.implementation.handlers.SimpleBlockBreakHandler;
 import io.github.thebusybiscuit.slimefun4.implementation.items.magical.KnowledgeFlask;
@@ -45,6 +46,7 @@ public class ExpCollector extends SlimefunItem implements InventoryBlock, Energy
     private final int[] border = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26 };
 
     private static final String DATA_KEY = "stored-exp";
+    private static final int IDLE_SLEEP_TICKS = 10;
 
     private final double range;
     private int energyConsumedPerTick = -1;
@@ -136,6 +138,7 @@ public class ExpCollector extends SlimefunItem implements InventoryBlock, Energy
             ExperienceOrb orb = (ExperienceOrb) iterator.next();
 
             if (getCharge(location) < getEnergyConsumption()) {
+                Slimefun.getTickerTask().sleepLocation(location, IDLE_SLEEP_TICKS);
                 return;
             }
 
@@ -144,6 +147,10 @@ public class ExpCollector extends SlimefunItem implements InventoryBlock, Energy
             removeCharge(location, getEnergyConsumption());
             orb.remove();
             produceFlasks(location, experiencePoints);
+        }
+
+        if (experiencePoints == 0) {
+            Slimefun.getTickerTask().sleepLocation(location, IDLE_SLEEP_TICKS);
         }
     }
 

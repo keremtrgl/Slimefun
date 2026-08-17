@@ -62,6 +62,7 @@ import me.mrCookieSlime.Slimefun.api.item_transport.ItemTransportFlow;
  */
 public abstract class Reactor extends AbstractEnergyProvider implements HologramOwner, MachineProcessHolder<FuelOperation> {
 
+    private static final int IDLE_SLEEP_TICKS = 30;
     private static final String MODE = "reactor-mode";
     private static final int INFO_SLOT = 49;
     private static final int COOLANT_DURATION = 50;
@@ -383,12 +384,12 @@ public abstract class Reactor extends AbstractEnergyProvider implements Hologram
     }
 
     private void burnNextFuel(Location l, BlockMenu inv, BlockMenu accessPort) {
-        Map<Integer, Integer> found = new HashMap<>();
-        MachineFuel fuel = findFuel(inv, found);
-
         if (accessPort != null) {
             restockFuel(inv, accessPort);
         }
+
+        Map<Integer, Integer> found = new HashMap<>();
+        MachineFuel fuel = findFuel(inv, found);
 
         if (fuel != null) {
             for (Map.Entry<Integer, Integer> entry : found.entrySet()) {
@@ -396,6 +397,8 @@ public abstract class Reactor extends AbstractEnergyProvider implements Hologram
             }
 
             processor.startOperation(l, new FuelOperation(fuel));
+        } else {
+            Slimefun.getTickerTask().sleepLocation(l, IDLE_SLEEP_TICKS);
         }
     }
 

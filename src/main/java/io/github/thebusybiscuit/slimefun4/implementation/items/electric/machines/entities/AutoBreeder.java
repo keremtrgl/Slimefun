@@ -19,6 +19,7 @@ import io.github.thebusybiscuit.slimefun4.api.items.SlimefunItemStack;
 import io.github.thebusybiscuit.slimefun4.api.recipes.RecipeType;
 import io.github.thebusybiscuit.slimefun4.core.attributes.EnergyNetComponent;
 import io.github.thebusybiscuit.slimefun4.core.networks.energy.EnergyNetComponentType;
+import io.github.thebusybiscuit.slimefun4.implementation.Slimefun;
 import io.github.thebusybiscuit.slimefun4.implementation.SlimefunItems;
 import io.github.thebusybiscuit.slimefun4.implementation.handlers.SimpleBlockBreakHandler;
 import io.github.thebusybiscuit.slimefun4.utils.SlimefunUtils;
@@ -36,6 +37,7 @@ public class AutoBreeder extends SlimefunItem implements InventoryBlock, EnergyN
     private final int[] border = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26 };
 
     private static final int ENERGY_CONSUMPTION = 60;
+    private static final int IDLE_SLEEP_TICKS = 30;
 
     // We wanna strip the Slimefun Item id here
     private static final ItemStack organicFood = ItemStackWrapper.wrap(SlimefunItems.ORGANIC_FOOD.item());
@@ -109,6 +111,11 @@ public class AutoBreeder extends SlimefunItem implements InventoryBlock, EnergyN
     protected void tick(Block b) {
         BlockMenu inv = BlockStorage.getInventory(b);
 
+        if (!hasOrganicFood(inv)) {
+            Slimefun.getTickerTask().sleepLocation(b.getLocation(), IDLE_SLEEP_TICKS);
+            return;
+        }
+
         for (Entity n : b.getWorld().getNearbyEntities(b.getLocation(), 4.0, 2.0, 4.0, this::canBreed)) {
             for (int slot : getInputSlots()) {
                 if (SlimefunUtils.isItemSimilar(inv.getItemInSlot(slot), organicFood, false)) {
@@ -125,6 +132,16 @@ public class AutoBreeder extends SlimefunItem implements InventoryBlock, EnergyN
                 }
             }
         }
+    }
+
+    private boolean hasOrganicFood(BlockMenu inv) {
+        for (int slot : getInputSlots()) {
+            if (SlimefunUtils.isItemSimilar(inv.getItemInSlot(slot), organicFood, false)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private boolean canBreed(@Nonnull Entity n) {
