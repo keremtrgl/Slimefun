@@ -4,14 +4,14 @@ commands:
   cheat: Hile Yapmanıza olanak sağlar
   give: Birisine Slimefun Eşyası verir
   guide: Kendinize bir Slimefun Rehberi verir
-  teleporter: Diğer Bir Oyuncunun Yer Noktalarına Bakın
+  teleporter: Başka bir oyuncunun yer noktalarını gösterir
   versions: Yüklü tüm Eklentileri listeler
   search: Rehberinizde belirtilen eşyayı arar
   open_guide: Kitabı kullanmadan Slimefun Rehberini açar
-  stats: Oyuncu hakkında bazı İstatistikleri Gösterir
+  stats: Oyuncu hakkında bazı istatistikleri gösterir
   research:
     description: Bir oyuncu için araştırmaların kilidini açma / sıfırlama
-    reset: '&c %player%''ın Bilgisini sıfırladınız'
+    reset: '&c%player%''ın Bilgisini sıfırladınız'
     reset-target: '&cBilginiz sıfırlandı'
   backpack:
     description: Varolan bir sırt çantasının kopyasını elde et
@@ -21,8 +21,8 @@ commands:
     restored-backpack-given: '&aSırt çantanız bulundu ve envanterinize teslim edildi!'
   charge:
     description: Elinizdeki eşyayı şarj eder
-    charge-success: Eşyanız şarz edildi!
-    not-rechargeable: Bu eşya şarz edilemez!
+    charge-success: Eşyanız şarj edildi!
+    not-rechargeable: Bu eşya şarj edilemez!
   timings:
     description: Slimefun ve Eklentileri için zamanlamalar
     please-wait: '&eLütfen bir saniye bekleyin... Sonuçlar geliyor!'
@@ -30,6 +30,9 @@ commands:
     unknown-flag: '&4Bilinmeyen Bayrak: &c%flag%'
   debug:
     description: 'Developerlar için hata ayıklamayı başlat'
+    current: '&7Şu anki test durumu: &6%test_case%'
+    none-running: '&7Şu anda çalışan bir test durumu yok!'
+    running: '&7Şu test ile hata ayıklama modu çalıştırılıyor: &6%test%'
     disabled: '&7Hata ayıklama kapalı.'
 placeholderapi:
   profile-loading: 'Yükleniyor...'
@@ -78,7 +81,27 @@ guide:
     translations:
       name: '&aBir şeyler mi eksik?'
       lore: 'Kendi çevirinizi eklemek için tıklayın'
+  modes:
+    selected: 'Slimefun Rehberi Türü: '
+    change: 'Türü değiştirmek için tıklayın'
+    SURVIVAL_MODE: 'Hayatta Kalma Modu'
+    CHEAT_MODE: 'Hile Sayfası'
   options:
+    fireworks:
+      enabled:
+        text:
+          - '&bHavai Fişekler: &aEvet'
+          - ''
+          - '&7Artık bir eşyayı araştırdığınızda'
+          - '&7havai fişek görünüp görünmeyeceğini değiştirebilirsiniz.'
+        click: '&eHavai fişeklerinizi kapatmak için tıkla'
+      disabled:
+        text:
+          - '&bHavai Fişekler: &4Hayır'
+          - ''
+          - '&7Artık bir eşyayı araştırdığınızda'
+          - '&7havai fişek görünüp görünmeyeceğini değiştirebilirsiniz.'
+        click: '&eHavai fişeklerinizi açmak için tıkla'
     learning-animation:
       enabled:
         text:
@@ -114,14 +137,17 @@ guide:
     description:
       - '&7Slimefun açık kaynak kodlu bir projedir'
       - '&7ve büyük bir topluluk tarafından geliştirilir.'
-      - '&e%contributors%&7den(dan) fazla kişi yıllar'
-      - '&7boyunca Slimefun''a katkıda bulundu.'
+      - '&7Bu yıllar boyunca Slimefun''a &e%contributors%'
+      - '&7kişiden fazlası katkıda bulundu.'
     roles:
       developer: '&6Geliştirici'
       wiki: '&3Wiki Editörü'
       resourcepack: '&cKaynak Paketi Tasarımcısı'
       translator: '&9Çevirmen'
+actionbar:
+  radiation: '&6Radyasyon Maruziyet Seviyesi: &c%level%&7/&e100'
 messages:
+  not-researched: '&4Bunu anlamak için yeterli bilginiz yok. &cÖnce &f"%item%&f"''nin kilidini açmanız gerekiyor'
   not-enough-xp: '&4Bunun kilidini açmak için yeterli XP niz yok'
   unlocked: '&bKilidini açtın &7"%research%"'
   only-players: '&4Bu komut yalnızca oyuncular için'
@@ -130,7 +156,7 @@ messages:
   usage: '&4Kullanış: &c%usage%'
   not-online: '&4%player% &coyunda değil!'
   invalid-item: '&4%item% &cgeçerli bir eşya değil!'
-  invalid-amount: '&4%amount% &cgeçerli bir miktar değil : 0 dan büyük olmalı!'
+  invalid-amount: '&4%amount% &cgeçerli bir miktar değil : 0''dan büyük olmalı!'
   given-item: '&a%amount% &badet &7"%item%&7" &bsana verildi.'
   give-item: '&b%player% adlı oyuncuya &a%amount% &badet &7"%item%&7" &bverdin.'
   invalid-research: '&4%research% &cgeçerli bir araştırma değil!'
@@ -138,13 +164,18 @@ messages:
   hungry: '&cBunu yapmak için çok açsın!'
   disabled-in-world: '&4&lBu eşya bu dünyada devre dışı bırakıldı.'
   disabled-item: '&4&lBu eşya devre dışı bırakıldı! Bunu nasıl aldın?'
-  no-tome-yourself: '&4Tome of Knowledge &cı kendin için kullanamazsın...'
+  no-tome-yourself: '&4Tome of Knowledge''ı &ckendin için kullanamazsın...'
   multimeter: '&bDepolanmış Enerji: &3%stored% &b/ &3%capacity%'
   piglin-barter: '&4Slimefun eşyalarıyla, piglinlerle ticaret yapamazsın'
+  bee-suit-slow-fall: '&eArı Kanatların yere güvenli ve yavaşça inmene yardımcı olacak'
+  deprecated-item: '&4Bu eşya artık kullanılmıyor ve yakında Slimefun''dan kaldırılacak.'
+  researching-is-disabled: '&cBu sunucuda araştırma devre dışı bırakıldı. Her şeyin kilidi varsayılan olarak açık!'
+  await-deletion: '&cBir Slimefun bloğunu kırdıktan hemen sonra başka bir tane yerleştiremezsin. Kısa bir süre sonra tekrar dene.'
   multi-tool:
-    mode-change: '&b%device% modül değiştirildi: &9%mode%'
+    mode-change: '&b%device% modu değiştirildi: &9%mode%'
     not-shears: '&cBir Multi Tool makas olarak kullanılamaz!'
   auto-crafting:
+    select-a-recipe: '&eOluşturmasını istediğiniz eşyayla birlikte bu bloğa &7Çömelip Sağ Tıklayın&e.'
     recipe-set: '&aBu makinenin tarifini başarıyla ayarladınız.'
     recipe-removed: '&eTarifi bu makineden başarıyla kaldırdınız. İstediğiniz zaman yeni bir tarif ayarlayabilirsiniz!'
     no-recipes: '&cTuttuğunuz öğe için geçerli herhangi bir tarif bulamadık.'
@@ -152,6 +183,10 @@ messages:
     select: 'Bu tarifi seçin'
     temporarily-disabled: '&eBu otomatik Crafter geçici olarak devre dışı bırakıldı. İstediğiniz zaman yeniden etkinleştirebilirsiniz!'
     re-enabled: '&eBu otomatik Crafter yeniden etkinleştirildi!'
+    recipe-unavailable: |
+      &cBu eşya sunucunuzda ya devre dışı bırakılmış ya da kilidini henüz açmadınız.
+      &7Tarifin kilidini açmak için daha önce yapmadıysanız eşyayı elle üretmeyi deneyin.
+
     tooltips:
       enabled:
         - '&aBu tarif şu anda etkin'
@@ -165,7 +200,8 @@ messages:
         - '&eSağ Tıklama &7bu tarifi kaldırmak için'
   talisman:
     anvil: '&a&oTılsım aletinizi kırılmadan kurtardı'
-    miner: '&a&oTılsımın madenini ikiye katladı'
+    miner: '&a&oTılsımın ganimetini ikiye katladı'
+    farmer: '&a&oTılsımın ganimetini ikiye katladı'
     hunter: '&a&oTılsımın ganimetini ikiye katladı'
     lava: '&a&oTılsımın seni yanarak ölmekten kurtardı'
     water: '&a&oTılsımın seni boğulmaktan kurtardı'
@@ -176,13 +212,14 @@ messages:
     warrior: '&a&oTılsımın bir süreliğine seni güçlendirdi'
     knight: '&a&oTılsımın sana 5 Saniye Yenilenme verdi'
     whirlwind: '&a&oTılsımın Mermiyi yansıttı'
-    wizard: '&a&oTılsımın sana daha yüksek seviye Servet verdi ama başka bir Büyünün seviyesini düşürmüş olabilir.'
+    wizard: '&a&oTılsımın sana daha yüksek seviye Şans verdi ama başka bir Büyünün seviyesini düşürmüş olabilir.'
     caveman: '&a&oTılsımın sana acele efekti verdi'
+    wise: '&a&oTılsımın deneyim kazanımını ikiye katladı'
   soulbound-rune:
     fail: '&cBir seferde sadece bir eşyayı ruhuna bağlayabilirsin.'
     success: '&aBu eşyayı ruhuna başarıyla bağladın! Öldüğünde saklayacaksın.'
   enchantment-rune:
-    fail: '&cYou eşyayı büyüleyemezsin.'
+    fail: '&cBu eşyayı büyüleyemezsin.'
     no-enchantment: '&cBu eşya için uygun bir büyü bulunamadı.'
     success: '&aBaşarılı bir şekilde bu eşyaya rastgele bir büyü uyguladınız.'
   research:
@@ -195,7 +232,7 @@ messages:
     anchor-set: '&aBaşarılı bir şekilde bir nokta seçildi:&e %anchor%'
   climbing-pick:
     dual-wielding: '&4Tırmanabilmek için her iki elinizde de Climbing Pick tutmanız gerekiyor!'
-    wrong-material: '&cBu yüzeye tırmanamazsınız. Daha çok bilgi için Slimefun Guide''a bakın!'
+    wrong-material: '&cBu yüzeye tırmanamazsınız. Daha fazla bilgi için Slimefun Rehberi''ne bakın!'
   fire-extinguish: '&7Kendini söndürdün'
   cannot-place: '&cBu bloğu oraya yerleştiremezsiniz!'
   no-pvp: '&cBurada pvp yapamazsınız!'
@@ -220,6 +257,7 @@ messages:
     - '&7Daima hayatın parlak tarafından bak!'
     - '&7Bu aslında bir Bisküvi idi, Kurabiye değil.'
     - '&7Neon levhalar ışık yayar!'
+  above-limit-level: '&c%level% seviyesinden yüksek bir büyüyü (kaldır)amazsınız!'
   pickaxe-of-the-seeker:
     no-ores: '&cYakındaki cevherleri bulamıyorum!'
 machines:
@@ -243,7 +281,10 @@ machines:
     no-destinations: '&4Varış noktası bulunamadı'
     pick-a-floor: '&3- Bir kat seçin -'
     current-floor: '&eŞu anda bulunduğunuz kat:'
-    click-to-teleport: '&7Bu yere ışınlanmak için &eTıkla:'
+    click-to-teleport: '&7Bu kata ışınlanmak için &eTıkla:'
+    enter-name: '&7Lütfen Sohbette istediğiniz kat adını yazın. &f(Renk Kodları destekleniyor!)'
+    named: '&2Bu kat başarıyla adlandırıldı: &f%floor%'
+    editor-title: 'Bu asansörü yapılandır'
   TELEPORTER:
     teleporting: '&3Işınlanılıyor...'
     teleported: '&3Işınlanıldı!'
@@ -260,6 +301,7 @@ machines:
   CARGO_NODES:
     must-be-placed: '&4Mutlaka bir sandık veya makineye bağlanmalı!'
     connected: '&2Bağlandı!'
+    not-connected: '&4Bağlı değil!'
   INDUSTRIAL_MINER:
     no-fuel: '&cIndustrial Miner''ınızın yakıtı bitti! Yukarıdaki sandığa yakıt koyun.'
     piston-facing: '&cIndustrial Miner''ınızın pistonu yukarıya bakmalı!'
@@ -271,10 +313,13 @@ machines:
     finished: '&eIndustrial Miner''ınızın işi bitti! Toplamda %ores% kadar maden buldu!'
 anvil:
   not-working: '&4Slimefun eşyalarını örste kullanamazsın!'
+  mcmmo-salvaging: '&4Slimefun eşyalarını parçalarına ayıramazsın!'
 brewing_stand:
   not-working: '&4Slimefun eşyalarını simya standında kullanamazsın!'
 cartography_table:
   not-working: '&4Slimefun eşyalarını bir haritacılık masasında kullanamazsın!'
+smithing_table:
+  not-working: '&4Slimefun eşyasını demircilik malzemesi olarak kullanamazsın!'
 villagers:
   no-trading: '&4Köylülerle Slimefun eşyalarını kullanarak ticaret yapamazsın!'
 backpack:
@@ -286,6 +331,8 @@ cauldron:
   no-discoloring: '&4Slimefun Zırhını renk değiştiremezsiniz'
 gps:
   deathpoint: '&4Ölüm Noktası &7%date%'
+  status-online: 'ÇEVRİMİÇİ'
+  status-offline: 'ÇEVRİMDIŞI'
   waypoint:
     new: '&eLütfen sohbette yeni yer noktanız için bir ad yazın. &7(Renk Kodları destekleniyor!)'
     added: '&aYeni bir yer noktası başarıyla eklendi'
@@ -329,8 +376,8 @@ android:
       CATCH_FISH: '&bBalık Tut'
       FARM_FORWARD: '&bTopla ve Ek'
       FARM_DOWN: '&bToplama ve Ekim &7(Altındaki blok)'
-      FARM_EXOTIC_FORWARD: '&bGelişmişce Topla ve Ek'
-      FARM_EXOTIC_DOWN: '&bGelişmişce Topla ve Ek &7(Altındaki blok)'
+      FARM_EXOTIC_FORWARD: '&bGelişmişçe Topla ve Ek'
+      FARM_EXOTIC_DOWN: '&bGelişmişçe Topla ve Ek &7(Altındaki blok)'
       INTERFACE_ITEMS: '&9Envanter İçeriğini öndeki Arayüze aktar'
       INTERFACE_FUEL: '&cÖndeki Arayüzden Yakıt çek'
     enter-name:
@@ -341,7 +388,7 @@ android:
       - '&bYükleniyor...'
       - '&aSenaryon başarıyla yüklendi!'
     rating:
-      own: '&4Kendi senaryonu oylayamazın!'
+      own: '&4Kendi senaryonu oylayamazsın!'
       already: '&4Bu senaryo için zaten oy kullandın!'
 languages:
   default: 'Sunucu Varsayılanı'
@@ -353,15 +400,15 @@ languages:
   pl: 'Lehçe'
   sv: 'İsveççe'
   nl: 'Flemenkçe'
-  cs: 'Çekce'
+  cs: 'Çekçe'
   hu: 'Macarca'
-  lv: 'Letonyaca'
+  lv: 'Letonca'
   ru: 'Rusça'
   sk: 'Slovakça'
   zh-CN: 'Çince (Çin)'
   zh-TW: 'Çince (Tayvan)'
   vi: 'Vietnamca'
-  id: 'Endonezyaca'
+  id: 'Endonezce'
   el: 'Yunanca'
   he: 'İbranice'
   pt: 'Portekizce (Portekiz)'
@@ -372,11 +419,12 @@ languages:
   fi: 'Fince'
   uk: 'Ukraynaca'
   ms: 'Malayca'
-  'no': 'Norveçce'
+  'no': 'Norveççe'
   ja: 'Japonca'
-  fa: 'Persçe'
+  fa: 'Farsça'
   th: 'Tayca'
-  ro: 'Romanca'
+  tl: 'Tagalogca'
+  ro: 'Rumence'
   bg: 'Bulgarca'
   ko: 'Korece'
   tr: 'Türkçe'
@@ -384,3 +432,5 @@ languages:
   mk: 'Makedonca'
   sr: 'Sırpça'
   be: 'Belarusça'
+  si-LK: 'Sinhalaca'
+  lt: 'Litvanca'

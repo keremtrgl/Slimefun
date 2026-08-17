@@ -63,6 +63,7 @@ slimefun:
   angel_talisman: Melek Tılsımı
   fire_talisman: İtfaiyeci Tılsımı
   caveman_talisman: Mağara Adamı Tılsımı
+  wise_talisman: Bilge Tılsımı
   lava_crystal: Ateşli Durum
   magician_talisman: Sihirbaz Tılsımı
   traveller_talisman: Gezgin Tılsımı
@@ -79,7 +80,7 @@ slimefun:
   crushed_ore: Maden Arıtma
   redstone_alloy: Kızıltaş Alaşımı
   carbonado_tools: Üst Seviye Makineler
-  first_aid: İlk yardım
+  first_aid: İlk Yardım
   gold_armor: Parlak Zırh
   night_vision_googles: Gece Görüş Gözlüğü
   pickaxe_of_containment: Kapsama Kazması
@@ -124,10 +125,11 @@ slimefun:
   electric_motor: Kızışıyor
   block_placer: Blok Yerleştirici
   scroll_of_dimensional_teleposition: Bir şeyleri etrafında çevirmek
+  special_bows: Robin Hood
   tome_of_knowledge_sharing: Arkadaşlarla paylaşma
   flask_of_knowledge: XP Depolama
   hardened_glass: Patlamalara Dayanıklı
-  golden_apple_juice: Altın iksir
+  golden_apple_juice: Altın İksir
   cooler: Portatif İçecekler
   ancient_altar: Antik Sunak
   wither_proof_obsidian: Wither-Geçirmez Obsidyen
@@ -187,6 +189,7 @@ slimefun:
   cargo_basics: Kargo Temelleri
   cargo_nodes: Kargo Kurulumu
   electric_ingot_machines: Elektrikli Külçe İmalatı
+  medium_tier_electric_ingot_machines: Hızlı Külçe İmalatı
   high_tier_electric_ingot_machines: Süper Hızlı Külçe İmalatı
   automated_crafting_chamber: Otomatik Üretim
   better_food_fabricator: Gelişmiş Yemek Üretimi
@@ -208,6 +211,7 @@ slimefun:
   better_heated_pressure_chamber: Gelişmiş Isıtmalı Basınç Odası
   elytra: Elytralar
   special_elytras: Özel Elytralar
+  trident: Üç Dişli Mızrak
   electric_crucible: Elektrikli Pota
   better_electric_crucibles: Sıcak Potalar
   advanced_electric_smeltery: Gelişmiş Elektrikli Dökümhane
@@ -236,7 +240,7 @@ slimefun:
   tree_growth_accelerator: Daha Hızlı Ağaçlar
   industrial_miner: Endüstriyel Madencilik
   advanced_industrial_miner: Gelişmiş Madencilik
-  magical_zombie_pills: A-Zombifikasyon
+  magical_zombie_pills: Zombilikten Arındırma
   auto_brewer: Endüstriyel İksircilik
   climbing_pick: Blok Raider
   shulker_shell: Sentetik Shulkerlar
@@ -246,3 +250,13 @@ slimefun:
   iron_golem_assembler: Otomize Demir Golemler
   villager_rune: Sıfır Köylü Ticareti
   elytra_cap: İniş Takımı
+  bee_armor: Arı Zırhı
+  book_binder: Büyü Kitabı Eşleme
+  auto_crafting: Otomatik Üretim
+  produce_collector: Otomatik Sağım
+  improved_generators: Gelişmiş Jeneratörler
+  ingredients_and_cheese: Slimefun Mutfağı
+  medium_tier_auto_enchanting: Hızlı Otomatik Büyüleyici ve Büyü Sökücü
+  portable_teleporter: Her Yerden Işınlanma
+  farmer_talisman: Çiftçi Tılsımı
+  rainbow_armor: Gökkuşağını Gökyüzünde Görmek İstiyorum
