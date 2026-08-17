@@ -84,7 +84,7 @@ public class SlimefunProfiler {
 
     private long totalElapsedTime;
 
-    private final Map<ProfiledBlock, Long> timings = new ConcurrentHashMap<>();
+    private volatile Map<ProfiledBlock, Long> timings = new ConcurrentHashMap<>();
     private final Queue<PerformanceInspector> requests = new ConcurrentLinkedQueue<>();
 
     private final AtomicLong totalMsTicked = new AtomicLong();
@@ -107,7 +107,7 @@ public class SlimefunProfiler {
     public void start() {
         isProfiling = true;
         queued.set(0);
-        timings.clear();
+        timings = new ConcurrentHashMap<>();
     }
 
     /**
@@ -162,12 +162,13 @@ public class SlimefunProfiler {
         }
 
         long elapsedTime = System.nanoTime() - timestamp;
+        Map<ProfiledBlock, Long> target = timings;
 
         executor.execute(() -> {
             ProfiledBlock block = new ProfiledBlock(l, item);
 
             // Merge (if we have multiple samples for whatever reason)
-            timings.merge(block, elapsedTime, Long::sum);
+            target.merge(block, elapsedTime, Long::sum);
             queued.decrementAndGet();
         });
 
@@ -185,10 +186,11 @@ public class SlimefunProfiler {
             return;
         }
 
-        executor.execute(this::finishReport);
+        Map<ProfiledBlock, Long> snapshot = timings;
+        executor.execute(() -> finishReport(snapshot));
     }
 
-    private void finishReport() {
+    private void finishReport(Map<ProfiledBlock, Long> snapshot) {
         // We will only wait for a maximum of this many 1ms sleeps
         int iterations = 4000;
 
@@ -224,9 +226,9 @@ public class SlimefunProfiler {
             return;
         }
 
-        totalElapsedTime = timings.values().stream().mapToLong(Long::longValue).sum();
+        totalElapsedTime = snapshot.values().stream().mapToLong(Long::longValue).sum();
 
-        averageTimingsPerMachine.getAndSet(timings.values().stream().mapToLong(Long::longValue).average().orElse(0));
+        averageTimingsPerMachine.getAndSet(snapshot.values().stream().mapToLong(Long::longValue).average().orElse(0));
 
         /*
          * We log how many milliseconds have been ticked, and how many ticks have passed
@@ -237,7 +239,7 @@ public class SlimefunProfiler {
         ticksPassed.incrementAndGet();
 
         if (!requests.isEmpty()) {
-            PerformanceSummary summary = new PerformanceSummary(this, totalElapsedTime, timings.size());
+            PerformanceSummary summary = new PerformanceSummary(this, totalElapsedTime, snapshot.size());
             Iterator<PerformanceInspector> iterator = requests.iterator();
 
             while (iterator.hasNext()) {

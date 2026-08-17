@@ -31,9 +31,16 @@ public class HopperListener implements Listener {
 
     @EventHandler
     public void onHopperInsert(InventoryMoveItemEvent e) {
-        Location loc = e.getDestination().getLocation();
+        Location destination = e.getDestination().getLocation();
 
-        if (loc != null && e.getSource().getType() == InventoryType.HOPPER && BlockStorage.check(loc) instanceof NotHopperable) {
+        if (destination != null && e.getSource().getType() == InventoryType.HOPPER && BlockStorage.check(destination) instanceof NotHopperable) {
+            e.setCancelled(true);
+            return;
+        }
+
+        Location source = e.getSource().getLocation();
+
+        if (source != null && e.getDestination().getType() == InventoryType.HOPPER && BlockStorage.check(source) instanceof NotHopperable) {
             e.setCancelled(true);
         }
     }

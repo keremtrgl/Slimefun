@@ -80,20 +80,6 @@ public final class ThreadService {
             // This is a bit of a hack, but it's the only way to have the thread name be as desired
             Thread.currentThread().setName(plugin.getName() + " - " + name);
             runnable.run();
-        }, delay, delay, unit);
-    }
-
-    /**
-     * Get the caller of a given method, this should only be used for debugging purposes and is not performant.
-     *
-     * @return The caller of the method that called this method.
-     */
-    public static String getCaller() {
-        // First item will be getting the call stack
-        // Second item will be this call
-        // Third item will be the func we care about being called
-        // And finally will be the caller
-        StackTraceElement element = Thread.currentThread().getStackTrace()[3];
-        return element.getClassName() + "." + element.getMethodName() + ":" + element.getLineNumber();
+        }, delay, period, unit);
     }
 }

@@ -186,12 +186,17 @@ public class LocalizationService extends SlimefunLocalization {
 
         // Loading in the defaults from our resources folder
         String path = "/languages/" + language + "/messages.yml";
+        InputStream inputStream = plugin.getClass().getResourceAsStream(path);
 
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(plugin.getClass().getResourceAsStream(path), StandardCharsets.UTF_8))) {
-            FileConfiguration config = YamlConfiguration.loadConfiguration(reader);
-            getConfig().getConfiguration().setDefaults(config);
-        } catch (IOException e) {
-            Slimefun.logger().log(Level.SEVERE, e, () -> "Failed to load language file: \"" + path + "\"");
+        if (inputStream == null) {
+            Slimefun.logger().log(Level.SEVERE, () -> "Failed to load language file: \"" + path + "\" (resource not found)");
+        } else {
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
+                FileConfiguration config = YamlConfiguration.loadConfiguration(reader);
+                getConfig().getConfiguration().setDefaults(config);
+            } catch (IOException e) {
+                Slimefun.logger().log(Level.SEVERE, e, () -> "Failed to load language file: \"" + path + "\"");
+            }
         }
 
         save();

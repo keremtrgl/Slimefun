@@ -60,7 +60,14 @@ class BackpackCommand extends SubCommand {
                     return;
                 }
 
-                int id = Integer.parseInt(args[2]);
+                int id;
+
+                try {
+                    id = Integer.parseInt(args[2]);
+                } catch (NumberFormatException x) {
+                    Slimefun.getLocalization().sendMessage(sender, "commands.backpack.invalid-id");
+                    return;
+                }
 
                 PlayerProfile.get(backpackOwner, profile -> {
                     if (!profile.getBackpack(id).isPresent()) {

@@ -207,7 +207,7 @@ public class MetricsService {
             JsonElement element = JsonUtils.parseString(response.body());
 
             return element.getAsJsonObject().get("tag_name").getAsInt();
-        } catch (IOException | InterruptedException | JsonParseException e) {
+        } catch (IOException | InterruptedException | RuntimeException e) {
             plugin.getLogger().log(Level.WARNING, "Failed to fetch latest builds for Metrics: {0}", e.getMessage());
             return -1;
         }

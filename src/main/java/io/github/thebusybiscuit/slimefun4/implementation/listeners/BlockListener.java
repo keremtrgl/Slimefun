@@ -153,6 +153,17 @@ public class BlockListener implements Listener {
         ItemStack item = e.getPlayer().getInventory().getItemInMainHand();
         SlimefunItem sfItem = BlockStorage.check(e.getBlock());
 
+        // Fall back to the persisted NBT id (BlockDataService) so SlimefunBlockBreakEvent
+        // fires consistently with callBlockHandler's own fallback below, instead of
+        // silently skipping the event for blocks BlockStorage hasn't caught up on yet.
+        if (sfItem == null && Slimefun.getBlockDataService().isTileEntity(e.getBlock().getType())) {
+            Optional<String> blockData = Slimefun.getBlockDataService().getBlockData(e.getBlock());
+
+            if (blockData.isPresent()) {
+                sfItem = SlimefunItem.getById(blockData.get());
+            }
+        }
+
         // If there is a Slimefun Block here, call our BreakEvent and, if cancelled, cancel this event and return
         if (sfItem != null) {
             SlimefunBlockBreakEvent breakEvent = new SlimefunBlockBreakEvent(e.getPlayer(), item, e.getBlock(), sfItem);
@@ -207,14 +218,6 @@ public class BlockListener implements Listener {
 
     @ParametersAreNonnullByDefault
     private void callBlockHandler(BlockBreakEvent e, ItemStack item, List<ItemStack> drops, @Nullable SlimefunItem sfItem) {
-        if (sfItem == null && Slimefun.getBlockDataService().isTileEntity(e.getBlock().getType())) {
-            Optional<String> blockData = Slimefun.getBlockDataService().getBlockData(e.getBlock());
-
-            if (blockData.isPresent()) {
-                sfItem = SlimefunItem.getById(blockData.get());
-            }
-        }
-
         if (sfItem != null && !sfItem.useVanillaBlockBreaking()) {
             sfItem.callItemHandler(BlockBreakHandler.class, handler -> handler.onPlayerBreak(e, item, drops));
 

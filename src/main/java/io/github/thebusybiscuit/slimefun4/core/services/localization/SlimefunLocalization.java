@@ -1,5 +1,6 @@
 package io.github.thebusybiscuit.slimefun4.core.services.localization;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
@@ -207,7 +208,7 @@ public abstract class SlimefunLocalization implements Keyed {
 
         if (language == null) {
             // Unit-Test scenario (or something went horribly wrong)
-            return Arrays.asList("Error: No language present");
+            return new ArrayList<>(Arrays.asList("Error: No language present"));
         }
 
         FileConfiguration config = language.getFile(file);
@@ -232,15 +233,15 @@ public abstract class SlimefunLocalization implements Keyed {
     @ParametersAreNonnullByDefault
     private @Nonnull List<String> getStringList(@Nullable Language language, LanguageFile file, String path) {
         List<String> list = getStringListOrNull(language, file, path);
-        return list != null ? list : Arrays.asList("! Missing string \"" + path + '"');
+        return list != null ? list : new ArrayList<>(Arrays.asList("! Missing string \"" + path + '"'));
     }
 
     public @Nonnull String getMessage(@Nonnull String key) {
         Validate.notNull(key, "Message key must not be null!");
 
         Language language = getDefaultLanguage();
-
-        String message = language == null ? null : language.getFile(LanguageFile.MESSAGES).getString(key);
+        FileConfiguration messages = language == null ? null : language.getFile(LanguageFile.MESSAGES);
+        String message = messages == null ? null : messages.getString(key);
 
         if (message == null) {
             return getDefaultFile(LanguageFile.MESSAGES).getString(key);
