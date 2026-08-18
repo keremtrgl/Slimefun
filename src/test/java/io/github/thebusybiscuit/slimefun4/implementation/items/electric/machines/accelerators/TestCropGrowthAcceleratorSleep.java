@@ -11,7 +11,6 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 import io.github.thebusybiscuit.slimefun4.api.items.ItemGroup;
 import io.github.thebusybiscuit.slimefun4.api.items.SlimefunItemStack;
@@ -21,9 +20,9 @@ import io.github.thebusybiscuit.slimefun4.test.TestUtilities;
 
 import me.mrCookieSlime.Slimefun.api.BlockStorage;
 
-import be.seeseemelk.mockbukkit.MockBukkit;
-import be.seeseemelk.mockbukkit.ServerMock;
-import be.seeseemelk.mockbukkit.WorldMock;
+import org.mockbukkit.mockbukkit.MockBukkit;
+import org.mockbukkit.mockbukkit.ServerMock;
+import org.mockbukkit.mockbukkit.world.WorldMock;
 import org.bukkit.World;
 
 class TestCropGrowthAcceleratorSleep {
@@ -68,23 +67,14 @@ class TestCropGrowthAcceleratorSleep {
     }
 
     /**
-     * MockBukkit-v1.21 3.133.2 has no {@code Ageable} implementation for crop block data - calling
-     * {@code Material.WHEAT.createBlockData()} (e.g. via {@code Block#setType}) returns a plain
-     * {@code BlockDataMock} that cannot be cast to {@link Ageable}. We instead build our own minimal,
-     * stateful {@link Ageable} mock and attach it directly via {@code Block#setBlockData}, which only
-     * reads {@code getMaterial()} off the object it's given.
+     * MockBukkit-v1.21 4.x implements a real {@link Ageable} for crop block data, so we can just set
+     * the block's type and drive its age through the real BlockData instead of a Mockito mock.
      */
-    private static Ageable mockAgeableCrop(Material material, int maximumAge, int initialAge) {
-        int[] age = { initialAge };
-        Ageable ageable = Mockito.mock(Ageable.class);
-        Mockito.when(ageable.getMaterial()).thenReturn(material);
-        Mockito.when(ageable.getMaximumAge()).thenReturn(maximumAge);
-        Mockito.when(ageable.getAge()).thenAnswer(invocation -> age[0]);
-        Mockito.doAnswer(invocation -> {
-            age[0] = invocation.getArgument(0);
-            return null;
-        }).when(ageable).setAge(Mockito.anyInt());
-        return ageable;
+    private static void setCropAge(Block cropBlock, Material material, int age) {
+        cropBlock.setType(material);
+        Ageable ageable = (Ageable) cropBlock.getBlockData();
+        ageable.setAge(age);
+        cropBlock.setBlockData(ageable);
     }
 
     @Test
@@ -102,7 +92,7 @@ class TestCropGrowthAcceleratorSleep {
         machine.setCharge(block.getLocation(), 1000);
 
         Block cropBlock = world.getBlockAt(1, 65, 0);
-        cropBlock.setBlockData(mockAgeableCrop(Material.WHEAT, 7, 0));
+        setCropAge(cropBlock, Material.WHEAT, 0);
 
         // No fertilizer in the input inventory - the crop must not grow
         machine.tickForTesting(block);
@@ -129,7 +119,7 @@ class TestCropGrowthAcceleratorSleep {
         inv.replaceExistingItem(machine.getInputSlots()[0], io.github.thebusybiscuit.slimefun4.implementation.SlimefunItems.FERTILIZER.item());
 
         Block cropBlock = world.getBlockAt(1, 65, 0);
-        cropBlock.setBlockData(mockAgeableCrop(Material.WHEAT, 7, 0));
+        setCropAge(cropBlock, Material.WHEAT, 0);
 
         machine.tickForTesting(block);
 

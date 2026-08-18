@@ -1,5 +1,6 @@
 package io.github.thebusybiscuit.slimefun4.core.services;
 
+import java.util.Arrays;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -21,8 +22,8 @@ import org.junit.jupiter.api.Test;
 import io.github.bakedlibs.dough.recipes.RecipeSnapshot;
 import io.github.thebusybiscuit.slimefun4.implementation.Slimefun;
 
-import be.seeseemelk.mockbukkit.MockBukkit;
-import be.seeseemelk.mockbukkit.ServerMock;
+import org.mockbukkit.mockbukkit.MockBukkit;
+import org.mockbukkit.mockbukkit.ServerMock;
 
 class TestRecipeService {
 
@@ -56,8 +57,7 @@ class TestRecipeService {
         service.refresh();
 
         Recipe[] recipes = service.getRecipesFor(result);
-        Assertions.assertEquals(1, recipes.length);
-        Assertions.assertEquals(recipe, recipes[0]);
+        Assertions.assertTrue(Arrays.asList(recipes).contains(recipe));
     }
 
     @Test

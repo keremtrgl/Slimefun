@@ -32,9 +32,9 @@ import io.github.thebusybiscuit.slimefun4.test.TestUtilities;
 
 import me.mrCookieSlime.Slimefun.api.BlockStorage;
 
-import be.seeseemelk.mockbukkit.MockBukkit;
-import be.seeseemelk.mockbukkit.ServerMock;
-import be.seeseemelk.mockbukkit.block.BlockMock;
+import org.mockbukkit.mockbukkit.MockBukkit;
+import org.mockbukkit.mockbukkit.ServerMock;
+import org.mockbukkit.mockbukkit.block.BlockMock;
 
 /**
  * Tests for {@link MachineWakeListener}.

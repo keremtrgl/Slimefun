@@ -1,8 +1,8 @@
 package io.github.thebusybiscuit.slimefun4.implementation.listeners;
 
-import be.seeseemelk.mockbukkit.MockBukkit;
-import be.seeseemelk.mockbukkit.ServerMock;
-import be.seeseemelk.mockbukkit.entity.ItemEntityMock;
+import org.mockbukkit.mockbukkit.MockBukkit;
+import org.mockbukkit.mockbukkit.ServerMock;
+import org.mockbukkit.mockbukkit.entity.ItemEntityMock;
 import io.github.bakedlibs.dough.items.CustomItemStack;
 import io.github.thebusybiscuit.slimefun4.api.exceptions.TagMisconfigurationException;
 import io.github.thebusybiscuit.slimefun4.api.items.ItemGroup;
@@ -13,7 +13,6 @@ import io.github.thebusybiscuit.slimefun4.api.recipes.RecipeType;
 import io.github.thebusybiscuit.slimefun4.implementation.Slimefun;
 import io.github.thebusybiscuit.slimefun4.implementation.items.backpacks.SlimefunBackpack;
 import io.github.thebusybiscuit.slimefun4.test.TestUtilities;
-import io.github.thebusybiscuit.slimefun4.test.mocks.InventoryViewWrapper;
 import io.github.thebusybiscuit.slimefun4.utils.tags.SlimefunTag;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -89,6 +88,15 @@ class TestBackpackListener {
         slimefunBackpack.register(plugin);
 
         listener.openBackpack(player, item.item(), slimefunBackpack);
+
+        // openBackpack() only registers the click/drop guard once its async
+        // PlayerProfile.getBackpack(...) lookup resolves - wait for the GUI to
+        // actually be open before the caller simulates any interaction with it.
+        long deadline = System.currentTimeMillis() + 2000;
+        while (player.getOpenInventory().getTopInventory().getSize() != size && System.currentTimeMillis() < deadline) {
+            Thread.sleep(10);
+        }
+
         return backpack;
     }
 
@@ -136,7 +144,12 @@ class TestBackpackListener {
 
     private boolean isAllowed(String id, ItemStack item) throws InterruptedException {
         Player player = server.addPlayer();
-        Inventory inv = openMockBackpack(player, id, 9).getInventory();
+        openMockBackpack(player, id, 9);
+
+        // MockBukkit-v1.21 4.x does not keep player.openInventory(inv)'s top inventory
+        // as the same object reference as the Inventory that was passed in, so we must
+        // set the item on the actual open view rather than on PlayerBackpack#getInventory().
+        Inventory inv = player.getOpenInventory().getTopInventory();
 
         int slot = 7;
         inv.setItem(slot, item);
