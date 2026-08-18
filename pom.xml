@@ -382,13 +382,19 @@
 
         <dependency>
             <!-- Upstream's dough-api still has CustomGameProfile extending GameProfile, which
-                 became a final class in the authlib shipped with newer Paper builds and crashes
-                 Slimefun on startup (IncompatibleClassChangeError). Built locally from a patched
-                 checkout (dough-skins' CustomGameProfile no longer extends GameProfile) and
-                 installed into the local Maven repo until the upstream fix lands. -->
+                 became a final record in the authlib shipped with newer Paper builds and crashes
+                 Slimefun on startup (IncompatibleClassChangeError, then further GameProfile/
+                 PropertyMap immutability issues once that's worked around). Built locally from a
+                 patched checkout - CustomGameProfile composes a GameProfile instead of extending
+                 it, uses the record's id()/properties() accessors, and builds the PropertyMap from
+                 a populated Multimap up front instead of mutating it afterwards - and installed
+                 into the local Maven repo under a version string that can never collide with the
+                 real upstream 1.3.0 release, so a missing local install fails the build loudly
+                 instead of silently falling back to the broken upstream jar. Remove this override
+                 once the fix lands upstream. -->
             <groupId>io.github.baked-libs</groupId>
             <artifactId>dough-api</artifactId>
-            <version>1.3.0</version>
+            <version>1.3.0-slimefun-gameprofile-fix</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
