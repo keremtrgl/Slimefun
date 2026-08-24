@@ -11,6 +11,36 @@ It currently adds over **500 new items and recipes** to Minecraft ([Read more ab
 
 But it also comes with a lot of addons! Check out our [addons](https://github.com/Slimefun/Slimefun4/wiki/Addons), you may find exactly what you were looking for.
 
+## :rocket: What's different in this fork
+
+This is a modified fork of upstream Slimefun 4, focused on runtime performance, concurrency correctness, and staying compatible with current Paper builds. This section is an honest summary of what actually changed and why — no invented benchmark numbers, just the real work, with the full detail available in the [commit history](../../commits/main).
+
+### :zap: Performance
+* **Machines sleep instead of polling every tick.** Most machine types (furnaces, generators, reactors, androids, cargo/energy networks, crop accelerators, and more) used to re-scan their input slots, recipes, or surroundings on *every single game tick*, even when they had nothing to do. They now go to sleep when idle and wake up on the actual triggering event (a player interacting, an item arriving via hopper/cargo, fuel being restocked), falling back to a short bounded poll only where no real "wake" event exists.
+* **O(1) network lookups.** Energy and Cargo networks used to find "which network is this regulator's own network" with a linear scan over every registered network on the server, every tick, for every regulator. This is now a direct index lookup, with the old linear scan kept only as a correctness fallback for the rare case of multiple regulators sharing one network.
+* **Batched tick-thread scheduling.** Machines that need to touch the main thread from the async ticker used to each schedule their own individual Bukkit task per tick; this is now batched into a single scheduled task per tick cycle.
+* **fastutil-backed block storage.** Slimefun's per-world block storage now keys its internal maps with a packed primitive `long` (via a zero-allocation coordinate-packing utility, same bit layout as vanilla Minecraft's own `BlockPos`) through fastutil's primitive collections, instead of boxing every coordinate into a `Location` object and hashing it the slow way.
+
+### :repeat: Concurrency correctness
+Several of the changes above touch code that runs across the main thread and Slimefun's async ticker thread at the same time. Along the way this surfaced (and fixed) some real concurrency bugs: unsynchronized iteration over a map that's still being mutated from another thread, a non-atomic check-then-set re-entrancy flag, and a sleep-state registry that could leak entries for the lifetime of the server if a machine was removed while asleep.
+
+### :beetle: Bug fixes from a full code review
+A systematic pass through the core item API, the multiblock framework, core services, listeners, commands, the player-profile/backpack/research/GPS systems, and a wide sweep of individual items turned up and fixed dozens of concrete bugs. Some highlights:
+* A timed status effect (e.g. a temporary buff/debuff) built its expiry with string concatenation instead of arithmetic once one operand became a `String` — durations were silently ignored, making "temporary" effects effectively permanent.
+* The Programmable Android's script-rating GUI displayed a 0–1 fraction as if it were already a 0–100 percentage (showing "0.75%" instead of "75%"), with the color tier always stuck at the lowest.
+* An enchantment-conflict flag in the Auto Enchanter/Book Binder was declared outside its own loop instead of being reset per candidate, so the first conflict found silently dropped every later, unrelated enchantment from a merge.
+* The Fluid Pump's bottle-filling logic ran for lava too, wasting energy and item on a guaranteed no-op with a chance to destroy the lava source for nothing.
+* A hardcoded (and outdated) MockBukkit test-mode detection check meant plugin behavior could diverge between what was tested and what real servers ran.
+* A recurring pattern across many files: unguarded `Integer.parseInt()` calls after only a regex format check, throwing uncaught exceptions on numeric overflow instead of showing the intended user-facing error.
+* Several getters across the codebase returned live, mutable internal collections instead of defensive copies, letting external/addon code silently corrupt internal state (item groups, network topology, research data, and more).
+
+### :package: Compatibility upgrades
+* **Paper 1.21.11 support** (up from 1.21.1), including a fix for a shaded dependency (`dough-api`) whose `GameProfile` wrapper broke against the newer, immutable `GameProfile`/`PropertyMap` API shipped in this Paper build's `authlib`.
+* **Migrated the test suite from MockBukkit 3.x to 4.x** (the old 3.x line is unmaintained and was blocking any Paper upgrade past 1.21.1) — around 105 test files updated, several genuine MockBukkit-4.x behavior changes accounted for, all 1842 tests passing.
+
+### :earth_americas: Localization
+* Completed and corrected the Turkish translation (`messages.yml`/`recipes.yml`/`researches.yml`) — filled in missing keys that were silently falling back to English, and fixed a number of existing entries with incorrect or awkward wording.
+
 ### Quick navigation
 * **[:floppy_disk: Download Slimefun4](#floppy_disk-download-slimefun-4)**
 * **[:framed_picture: Screenshots](#framed_picture-screenshots)**
