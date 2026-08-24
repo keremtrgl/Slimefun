@@ -1,4 +1,5 @@
 # Table of contents
+- [keremtrgl fork — v4.9-UNOFFICIAL (24 Aug 2026)](#keremtrgl-fork--v49-unofficial-24-aug-2026)
 - [Release Candidate 38 (TBD)](#release-candidate-38-tbd)
 - [Release Candidate 37 (25 Feb 2024)](#release-candidate-37-25-feb-2024)
 - [Release Candidate 36 (20 Dec 2023)](#release-candidate-36-20-dec-2023)
@@ -37,6 +38,37 @@
 - [Release Candidate 3 (21 Nov 2019)](#release-candidate-3-21-nov-2019)
 - [Release Candidate 2 (29 Sep 2019)](#release-candidate-2-29-sep-2019)
 - [Release Candidate 1 (26 Sep 2019)](#release-candidate-1-26-sep-2019)
+
+## keremtrgl fork — v4.9-UNOFFICIAL (24 Aug 2026)
+
+> **This section covers only this fork** ([keremtrgl/Slimefun](https://github.com/keremtrgl/Slimefun)), branched from upstream at Release Candidate 37. It is not an official Slimefun release. Everything below "Release Candidate 38 (TBD)" is upstream's own changelog, unmodified. See the README's ["What's different in this fork"](https://github.com/keremtrgl/Slimefun#-whats-different-in-this-fork) section for a narrative summary, or the [full commit history](https://github.com/keremtrgl/Slimefun/commits/main) for line-by-line detail.
+
+#### Performance
+* Machines now sleep instead of polling every tick when idle (furnaces/machines via `AContainer`, generators, reactors, Programmable Androids, entity assemblers, Auto Breeder, Exp Collector, Charging Bench, Cargo and Energy networks), waking on the actual triggering event (player interaction, item arriving via hopper/cargo, fuel restocked) or a short bounded poll where no real wake event exists.
+* Energy/Cargo network regulator lookups changed from an O(n) scan over every registered network to an O(1) index, with the old scan kept only as a correctness fallback for multiple regulators sharing one network.
+* Machines needing the main thread from the async ticker now share one batched, queued sync task per tick cycle instead of each scheduling their own.
+* Per-world block storage now keys its internal maps with a packed primitive `long` (fastutil `Long2ObjectMap`, same coordinate bit-layout as vanilla's own `BlockPos`) instead of boxed `Location` keys.
+
+#### Fixes
+* A timed status effect built its expiry with string concatenation instead of arithmetic once one operand became a `String`, silently ignoring the duration and making "temporary" effects permanent.
+* Programmable Android script-rating GUI displayed a 0–1 fraction as a 0–100 percentage ("0.75%" instead of "75%"), with the color tier stuck at the lowest.
+* Auto Enchanter/Book Binder enchantment-conflict flag was declared outside its own loop instead of reset per candidate, silently dropping later unrelated enchantments from a merge after the first conflict.
+* Fluid Pump's bottle-filling logic ran for lava too, wasting energy/item on a guaranteed no-op with a chance to destroy the lava source.
+* Cargo/Energy network engine: 14 bugs fixed from a dedicated review (network-break detection running too late, several getters exposing live internal collections instead of copies, assorted null-safety and edge-case issues).
+* A wide recurring pattern across many files: unguarded `Integer.parseInt()` after only a regex format check, throwing uncaught exceptions on numeric overflow instead of the intended user-facing error.
+* Several concurrency bugs surfaced by the sleep/wake work: unsynchronized iteration over a map still being mutated from another thread, a non-atomic check-then-set re-entrancy flag, and a sleep-state registry that could leak entries for the server's lifetime if a machine was removed while asleep.
+* Dozens more, across the core item API, the multiblock framework, core services, listeners, commands, and the player-profile/backpack/research/GPS systems - see the commit history for the complete list.
+
+#### Compatibility
+* Upgraded target Paper API from 1.21.1 to **1.21.11**.
+* Migrated the test suite from MockBukkit 3.x to 4.x (official Maven Central coordinates instead of the unmaintained JitPack build) - ~105 test files updated, all 1842 tests passing.
+* Fixed a shaded dependency (`dough-api`) crash against Paper 1.21.11's newer, immutable `GameProfile`/`PropertyMap` (`authlib`) API.
+
+#### Localization
+* Completed and corrected the Turkish translation (`messages.yml`/`recipes.yml`/`researches.yml`).
+
+#### Known issue
+* `[dough: skins] Failed to detect skull nbt methods` - a legacy NMS reflection path (used for re-texturing already-*placed* player heads, e.g. a Capacitor's charge-level indicator, a Programmable Android's face, or the Debug Fish tool) looks up an obfuscated method name that no longer exists on Paper 1.21.11. Item-held player heads (skins on the item itself) are unaffected, since that path already uses the modern Bukkit `PlayerProfile` API. Not yet fixed.
 
 ## Release Candidate 38 (TBD)
 
