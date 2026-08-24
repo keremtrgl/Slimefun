@@ -41,6 +41,11 @@ A systematic pass through the core item API, the multiblock framework, core serv
 ### :earth_americas: Localization
 * Completed and corrected the Turkish translation (`messages.yml`/`recipes.yml`/`researches.yml`) — filled in missing keys that were silently falling back to English, and fixed a number of existing entries with incorrect or awkward wording.
 
+### :gear: CI / Release
+* Removed upstream's community-management workflows (auto-approve, auto-squash, issue/PR labeling, Discord/translator webhooks, preview builds, Sonar) — they either targeted `Slimefun/Slimefun4` specifically or relied on secrets this fork doesn't have, so they only cluttered the Actions tab.
+* Fixed the main build/test workflow, which still looked for a `master` branch (this fork uses `main`) and so never actually ran on a push — every push now gets a real `mvn package` build+test run.
+* Added a `release.yml` workflow: pushing a `v*` tag now builds the jar and attaches it to a GitHub Release, so there's a plain drag-and-drop download instead of relying on `blob.build` or GitHub Packages auth.
+
 ### Quick navigation
 * **[:floppy_disk: Download Slimefun4](#floppy_disk-download-slimefun-4)**
 * **[:framed_picture: Screenshots](#framed_picture-screenshots)**

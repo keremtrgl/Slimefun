@@ -67,6 +67,11 @@
 #### Localization
 * Completed and corrected the Turkish translation (`messages.yml`/`recipes.yml`/`researches.yml`).
 
+#### CI / Release
+* Removed 13 upstream community-management workflows (auto-approve, auto-squash, issue/PR labeling, Discord/translator webhooks, preview builds, Sonar, the old `blob.build` publish job) that either targeted `Slimefun/Slimefun4` specifically or depended on secrets this fork doesn't have.
+* Fixed the main build/test workflow (`maven-compiler.yml`), which was still gated on a `master` branch that doesn't exist here (this fork uses `main`) - it silently never ran on push. Same fix applied to `yaml-linter.yml`.
+* Added `release.yml`: pushing a `v*` tag now builds the jar and attaches it to a GitHub Release.
+
 #### Known issue
 * `[dough: skins] Failed to detect skull nbt methods` - a legacy NMS reflection path (used for re-texturing already-*placed* player heads, e.g. a Capacitor's charge-level indicator, a Programmable Android's face, or the Debug Fish tool) looks up an obfuscated method name that no longer exists on Paper 1.21.11. Item-held player heads (skins on the item itself) are unaffected, since that path already uses the modern Bukkit `PlayerProfile` API. Not yet fixed.
 
