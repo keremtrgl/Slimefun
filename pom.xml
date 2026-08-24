@@ -55,6 +55,23 @@
         </license>
     </licenses>
 
+    <!-- Publishes this build to GitHub Packages (Maven registry) for this fork.
+         Note: GitHub Packages rejects Maven artifactIds containing uppercase letters,
+         but this project's own artifactId ("Slimefun") is not renamed for that - a
+         plain `mvn deploy` will fail with HTTP 422 for that reason. The actual
+         published package (com.github.slimefun:slimefun) is published via
+         `mvn deploy:deploy-file` with an explicit lowercase artifactId override
+         instead, using this repository as the target. Requires a github.com token
+         with the write:packages scope configured as the "github" server in
+         settings.xml. -->
+    <distributionManagement>
+        <repository>
+            <id>github</id>
+            <name>keremtrgl Slimefun Maven Packages</name>
+            <url>https://maven.pkg.github.com/keremtrgl/Slimefun</url>
+        </repository>
+    </distributionManagement>
+
     <!-- Repositories that host our dependencies -->
     <!-- Well, any that aren't found on maven-central. -->
     <repositories>
